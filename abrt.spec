@@ -16,7 +16,7 @@
 Summary: Automatic bug detection and reporting tool
 Name: abrt
 Version: 2.0.8
-Release: 43.sl6
+Release: 44%{?dist}
 License: GPLv2+
 Group: Applications/System
 URL: https://fedorahosted.org/abrt/
@@ -311,8 +311,18 @@ Patch343: 0343-ccpp-fast-dumping-and-abrt-core-limit.patch
 #Patch345: 0345-spec-install-abrt-CCpp.conf-man-page.patch
 # $ git format-patch 2.0.8-41.el6 --topo-order -N --start-number 346 -o /home/repos/rhel/abrt
 Patch346: 0346-cli-do-not-ask-for-password-if-PrivateReports-no.patch
-Patch347:	abrt-add-sl-gpg-keys.patch
 # $ git format-patch 2.0.8-42.el6 --topo-order -N --start-number 347 -o /home/repos/rhel/abrt
+#Patch347: 0347-testcase-fix-abrtd-infinite-event-loop.patch
+#Patch348: 0348-testsuite-fix-abrtd-inotify-loop-test.patch
+#Patch349: 0349-testsuite-abrtd-infinite-event-loop-sleep-to-avoid-r.patch
+#Patch350: 0350-testsuite-a-i-event-loop-don-t-do-sosreport.patch
+#Patch351: 0351-testsuite-a-i-event-loop-remove-unneeded-code.patch
+#Patch352: 0352-testsuite-fix-beakerlib-command-typos.patch
+#Patch353: 0353-testsuite-fix-rhts-test.patch
+#Patch354: 0354-testsuite-disable-failing-tests.patch
+Patch355: 0355-retrace-client-stop-failing-on-SSL2.patch
+Patch356:	abrt-add-sl-gpg-keys.patch
+# $ git format-patch 2.0.8-43.el6 --topo-order -N --start-number 356 -o /home/repos/rhel/abrt
 
 
 # !! Do not forget to add %%patch
@@ -464,7 +474,7 @@ Requires: abrt-tui
 Requires: libreport-cli
 Requires: abrt-addon-kerneloops
 Requires: abrt-addon-ccpp, abrt-addon-python
-Requires: libreport-plugin-logger, libreport-plugin-rhtsupport, libreport-plugin-mailx
+Requires: libreport-plugin-logger, libreport-plugin-mailx
 Requires: sos
 
 %description cli
@@ -484,7 +494,7 @@ Requires: abrt-addon-ccpp, abrt-addon-python
 # Default config of addon-ccpp requires gdb
 Requires: gdb >= 7.0-3
 Requires: abrt-gui
-Requires: libreport-plugin-logger, libreport-plugin-rhtsupport, libreport-plugin-mailx
+Requires: libreport-plugin-logger, libreport-plugin-mailx
 Requires: sos
 #Requires: abrt-plugin-firefox
 %if 0%{?fedora}
@@ -804,7 +814,17 @@ Examples and documentation for ABRT Python API.
 #Patch344: 0344-testsuite-abrt-core-dump-file-size-limits.patch
 #Patch345: 0345-spec-install-abrt-CCpp.conf-man-page.patch
 %patch346 -p1
-%patch347 -p1
+#patch347: 0347-testcase-fix-abrtd-infinite-event-loop.patch
+#patch348: 0348-testsuite-fix-abrtd-inotify-loop-test.patch
+#patch349: 0349-testsuite-abrtd-infinite-event-loop-sleep-to-avoid-r.patch
+#patch350: 0350-testsuite-a-i-event-loop-don-t-do-sosreport.patch
+#patch351: 0351-testsuite-a-i-event-loop-remove-unneeded-code.patch
+#patch352: 0352-testsuite-fix-beakerlib-command-typos.patch
+#patch353: 0353-testsuite-fix-rhts-test.patch
+#patch354: 0354-testsuite-disable-failing-tests.patch
+%patch355 -p1
+%patch356 -p1
+
 
 %build
 rm -f src/plugins/*.1
@@ -1215,13 +1235,15 @@ gtk-update-icon-cache %{_datadir}/icons/hicolor &>/dev/null || :
 %config(noreplace) %{_sysconfdir}/profile.d/abrt-console-notification.sh
 
 %changelog
-* Tue Mar 21 2017 Scientific Linux Auto Patch Process <SCIENTIFIC-LINUX-DEVEL@LISTSERV.FNAL.GOV>
+* Wed Jun 20 2018 Scientific Linux Auto Patch Process <SCIENTIFIC-LINUX-DEVEL@LISTSERV.FNAL.GOV>
 - Added Source: abrt.ini
 -->  Config file for automated patch script
 - Added Patch: abrt-add-sl-gpg-keys.patch
 -->  Add the Scientific Linux keys to the recognized list
-- Ran Regex: (Release: .*)%{\?dist}(.*) => \1.sl6\2
--->  Modify release string to note changes
+
+* Tue Jan 23 2018 Martin Kutlak <mkutlak@redhat.com> - 2.0.8-44
+- Fix failing of retrace-client due to SSL2
+- Resolves: #1311981
 
 * Fri Dec 16 2016 Matej Habrnal <mhabrnal@redhat.com> - 2.0.8-43
 - fix patching of abrt-{ccpp,oops}.init files

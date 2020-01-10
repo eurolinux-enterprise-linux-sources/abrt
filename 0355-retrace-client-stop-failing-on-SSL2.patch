@@ -1,0 +1,37 @@
+From 479fa7008385442df1ee24afb94b515896cfb70f Mon Sep 17 00:00:00 2001
+From: mhabrnal <mhabrnal@dhcp-24-105.brq.redhat.com>
+Date: Tue, 12 Dec 2017 13:56:24 +0100
+Subject: [PATCH] retrace-client: stop failing on SSL2
+
+Resolves: #1311981
+
+Signed-off-by: mhabrnal <mhabrnal@dhcp-24-105.brq.redhat.com>
+---
+ src/plugins/https-utils.c | 7 ++++---
+ 1 file changed, 4 insertions(+), 3 deletions(-)
+
+diff --git a/src/plugins/https-utils.c b/src/plugins/https-utils.c
+index 785e3833..ddd057fb 100644
+--- a/src/plugins/https-utils.c
++++ b/src/plugins/https-utils.c
+@@ -193,13 +193,14 @@ void ssl_connect(struct https_cfg *cfg, PRFileDesc **tcp_sock, PRFileDesc **ssl_
+         PR_Close(*ssl_sock);
+         error_msg_and_die(_("Failed to enable client handshake to SSL socket."));
+     }
+-
++    /* https://bugzilla.redhat.com/show_bug.cgi?id=1311981
+     if (SECSuccess != SSL_OptionSet(*ssl_sock, SSL_ENABLE_SSL2, PR_TRUE))
+         error_msg_and_die(_("Failed to enable client handshake to SSL socket."));
++    */
+     if (SECSuccess != SSL_OptionSet(*ssl_sock, SSL_ENABLE_SSL3, PR_TRUE))
+-        error_msg_and_die(_("Failed to enable client handshake to SSL socket."));
++        error_msg_and_die(_("Failed to enable SSL3."));
+     if (SECSuccess != SSL_OptionSet(*ssl_sock, SSL_ENABLE_TLS, PR_TRUE))
+-        error_msg_and_die(_("Failed to enable client handshake to SSL socket."));
++        error_msg_and_die(_("Failed to enable TLS."));
+ 
+     sec_status = SSL_SetURL(*ssl_sock, cfg->url);
+     if (SECSuccess != sec_status)
+-- 
+2.14.3
+
