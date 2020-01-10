@@ -1,0 +1,33 @@
+From 6f4462afd0a5409a0361a60227c79a4352b54344 Mon Sep 17 00:00:00 2001
+From: Jiri Moskovcak <jmoskovc@redhat.com>
+Date: Mon, 27 Feb 2012 13:41:31 +0100
+Subject: [PATCH 024/105] doc: fixed a-a-a-vmcore man pages
+
+---
+ doc/abrt-action-analyze-vmcore.txt | 10 ++++++++--
+ 1 file changed, 8 insertions(+), 2 deletions(-)
+
+diff --git a/doc/abrt-action-analyze-vmcore.txt b/doc/abrt-action-analyze-vmcore.txt
+index fef59b4..3e016f5 100644
+--- a/doc/abrt-action-analyze-vmcore.txt
++++ b/doc/abrt-action-analyze-vmcore.txt
+@@ -38,8 +38,14 @@ OPTIONS
+ -v::
+    Be more verbose. Can be given multiple times.
+ 
+--d DIR1[:DIR2]::
+-   Additional debuginfo directories
++--cache=DIR1[:DIR2]::
++   Additional debuginfo directories (Default: /var/cache/abrt-di)
++
++--core=VMCORE::
++   Path to vmcore to analyze (Default: ./vmcore)
++
++--tmpdir=TMPDIR::
++   Where to store temporary files (Default: /tmp/abrt-tmp-debuginfo-<time>-<pid>)
+ 
+ AUTHORS
+ -------
+-- 
+1.7.11.2
+

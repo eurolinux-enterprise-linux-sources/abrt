@@ -1,0 +1,44 @@
+From 7b897cae73da0917dc1c6f90b0dd057a765d1de7 Mon Sep 17 00:00:00 2001
+From: Jiri Moskovcak <jmoskovc@redhat.com>
+Date: Mon, 7 Jan 2013 14:01:01 +0100
+Subject: [PATCH 123/123] fixed the relro flags rhbz#812284
+
+- more details: http://post-office.corp.redhat.com/archives/os-devel-list/2011-July/msg00162.html
+
+Conflicts:
+	src/daemon/Makefile.am
+---
+ src/daemon/Makefile.am  | 3 ++-
+ src/plugins/Makefile.am | 2 +-
+ 2 files changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/src/daemon/Makefile.am b/src/daemon/Makefile.am
+index bed3c44..8d54afb 100644
+--- a/src/daemon/Makefile.am
++++ b/src/daemon/Makefile.am
+@@ -26,7 +26,8 @@ abrtd_CPPFLAGS = \
+     $(LIBREPORT_CFLAGS) \
+     -D_GNU_SOURCE \
+     -Wall -Wwrite-strings \
+-    -Werror
++    -Werror \
++    -fPIE -Wl,-z,relro,now
+ abrtd_LDADD = \
+     ../lib/libabrt.la \
+     $(LIBREPORT_LIBS)
+diff --git a/src/plugins/Makefile.am b/src/plugins/Makefile.am
+index 95d0d7e..590aee2 100644
+--- a/src/plugins/Makefile.am
++++ b/src/plugins/Makefile.am
+@@ -188,7 +188,7 @@ abrt_action_install_debuginfo_to_abrt_cache_CPPFLAGS = \
+     -D_GNU_SOURCE \
+     $(LIBREPORT_CFLAGS) \
+     -Wall -Wwrite-strings \
+-    -fPIE -Wl,-z,bind_now
++    -fPIE -Wl,-z,relro,now
+ abrt_action_install_debuginfo_to_abrt_cache_LDADD = \
+      $(LIBREPORT_LIBS) \
+      ../lib/libabrt.la
+-- 
+1.8.0.1
+

@@ -1,0 +1,27 @@
+From 9f48eecce79bf88ba10d11547e817836b55c44df Mon Sep 17 00:00:00 2001
+From: Richard Marko <rmarko@redhat.com>
+Date: Thu, 17 Jan 2013 19:38:19 +0100
+Subject: [ABRT EL6 PATCH 174/197] abrt-python: skip non-accessible directories
+
+---
+ src/python-problem/problem/proxies.py | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/src/python-problem/problem/proxies.py b/src/python-problem/problem/proxies.py
+index de6be68..7dbc9b8 100644
+--- a/src/python-problem/problem/proxies.py
++++ b/src/python-problem/problem/proxies.py
+@@ -176,6 +176,10 @@ class FsProxy(object):
+     def list(self):
+         for dir_entry in os.listdir(self.directory):
+             dump_dir = os.path.join(self.directory, dir_entry)
++
++            if not os.path.isdir(dump_dir) or not os.access(dump_dir, os.R_OK):
++                continue
++
+             ddir = report.dd_opendir(dump_dir)
+             if ddir:
+                 ddir.close()
+-- 
+1.8.2.1
+

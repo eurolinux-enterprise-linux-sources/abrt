@@ -1,0 +1,28 @@
+From 581548b3abdf511fe7dd8c6ef6b509d90b2f2ae4 Mon Sep 17 00:00:00 2001
+From: Jiri Moskovcak <jmoskovc@redhat.com>
+Date: Tue, 21 Aug 2012 13:41:36 +0200
+Subject: [PATCH 111/112] minor fix to pkg-config file
+
+Conflicts:
+	abrt.pc.in
+---
+ abrt.pc.in | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/abrt.pc.in b/abrt.pc.in
+index 441d465..8b10d44 100755
+--- a/abrt.pc.in
++++ b/abrt.pc.in
+@@ -6,5 +6,6 @@ includedir=@includedir@
+ Name: abrt
+ Description: Library for writing ABRT plugins
+ Version: @VERSION@
+-Libs: -L${libdir} -lABRTUtils -lABRTdUtils
+-Cflags: -fPIC
++Libs: -L${libdir} -labrt
++Requires: glib-2.0 libreport
++Cflags: -fPIC -I${includedir}/abrt
+\ No newline at end of file
+-- 
+1.7.11.4
+

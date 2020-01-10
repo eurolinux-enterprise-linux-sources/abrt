@@ -1,0 +1,53 @@
+From 497aeceb31a5d23d4da5e3ca07b632216e05a063 Mon Sep 17 00:00:00 2001
+From: Jiri Moskovcak <jmoskovc@redhat.com>
+Date: Mon, 6 Aug 2012 14:02:15 +0200
+Subject: [PATCH 104/105] remove smolt
+
+---
+ po/POTFILES.in          | 1 -
+ src/plugins/Makefile.am | 3 ---
+ 2 files changed, 4 deletions(-)
+
+diff --git a/po/POTFILES.in b/po/POTFILES.in
+index c76df42..9cc76a1 100644
+--- a/po/POTFILES.in
++++ b/po/POTFILES.in
+@@ -30,7 +30,6 @@ src/cli/abrt-cli.c
+ src/cli/list.c
+ src/plugins/analyze_VMcore.xml.in
+ src/plugins/collect_GConf.xml.in
+-src/plugins/collect_Smolt.xml.in
+ src/plugins/collect_vimrc_system.xml.in
+ src/plugins/collect_vimrc_user.xml.in
+ 
+diff --git a/src/plugins/Makefile.am b/src/plugins/Makefile.am
+index 3e67973..52db426 100644
+--- a/src/plugins/Makefile.am
++++ b/src/plugins/Makefile.am
+@@ -27,7 +27,6 @@ dist_events_DATA = \
+     analyze_LocalGDB.xml \
+     analyze_VMcore.xml \
+     collect_xsession_errors.xml \
+-    collect_Smolt.xml \
+     collect_GConf.xml \
+     collect_vimrc_user.xml \
+     collect_vimrc_system.xml
+@@ -42,7 +41,6 @@ dist_eventsconf_DATA = \
+     vmcore_event.conf \
+     python_event.conf \
+     smart_event.conf \
+-    smolt_event.conf \
+     gconf_event.conf \
+     vimrc_event.conf
+ 
+@@ -55,7 +53,6 @@ PYTHON_FILES = \
+ 
+ EXTRA_DIST = \
+     $(PYTHON_FILES) \
+-    collect_Smolt.xml.in \
+     collect_xsession_errors.xml.in \
+     collect_GConf.xml.in \
+     collect_vimrc_user.xml.in \
+-- 
+1.7.11.2
+

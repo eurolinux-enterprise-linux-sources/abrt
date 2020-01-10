@@ -1,0 +1,199 @@
+From 29f1e58f36c96ae62e505fdf72bcfd71a1a836f1 Mon Sep 17 00:00:00 2001
+From: Richard Marko <rmarko@redhat.com>
+Date: Wed, 12 Dec 2012 14:39:29 +0100
+Subject: [ABRT EL6 PATCH 171/197] abrt-python: add new problem notification
+ support
+
+---
+ src/python-problem/doc/api.rst         | 10 ++++-
+ src/python-problem/doc/usage.rst       | 11 ++++++
+ src/python-problem/problem/Makefile.am |  2 +-
+ src/python-problem/problem/__init__.py | 14 ++++++-
+ src/python-problem/problem/proxies.py  |  2 +
+ src/python-problem/problem/tools.py    |  3 ++
+ src/python-problem/problem/watch.py    | 67 ++++++++++++++++++++++++++++++++++
+ 7 files changed, 105 insertions(+), 4 deletions(-)
+ create mode 100644 src/python-problem/problem/watch.py
+
+diff --git a/src/python-problem/doc/api.rst b/src/python-problem/doc/api.rst
+index 2a3c8b4..55b54e3 100644
+--- a/src/python-problem/doc/api.rst
++++ b/src/python-problem/doc/api.rst
+@@ -4,7 +4,7 @@ Stable API Documentation
+ ========================
+ 
+ .. automodule:: problem
+-   :members: Problem, list, get
++   :members: Problem, list, get, get_problem_watcher
+ 
+ Specific problem types
+ ----------------------
+@@ -12,4 +12,10 @@ Specific problem types
+ .. automodule:: problem
+    :members:
+    :noindex:
+-   :exclude-members: Problem, list, get
++   :exclude-members: Problem, list, get, get_problem_watcher
++
++ProblemWatcher
++--------------
++
++.. automodule:: problem.watch
++   :members: ProblemWatcher
+diff --git a/src/python-problem/doc/usage.rst b/src/python-problem/doc/usage.rst
+index 780479a..1bf8b32 100644
+--- a/src/python-problem/doc/usage.rst
++++ b/src/python-problem/doc/usage.rst
+@@ -39,3 +39,14 @@ Editing existing problems
+ -------------------------
+ 
+ .. literalinclude:: ../examples/edit_example.py
++
++
++Watching for new problems
++-------------------------
++
++.. literalinclude:: ../examples/watch_example.py
++
++Watching for new problems in a thread
++--------------------------------------
++
++.. literalinclude:: ../examples/thread_watch_example.py
+diff --git a/src/python-problem/problem/Makefile.am b/src/python-problem/problem/Makefile.am
+index 9bb6451..9e79f34 100644
+--- a/src/python-problem/problem/Makefile.am
++++ b/src/python-problem/problem/Makefile.am
+@@ -1,3 +1,3 @@
+-problem_PYTHON = __init__.py exception.py proxies.py tools.py
++problem_PYTHON = __init__.py exception.py proxies.py tools.py watch.py
+ 
+ problemdir = $(pythondir)/problem
+diff --git a/src/python-problem/problem/__init__.py b/src/python-problem/problem/__init__.py
+index 7bd11c7..bff64f3 100644
+--- a/src/python-problem/problem/__init__.py
++++ b/src/python-problem/problem/__init__.py
+@@ -2,7 +2,7 @@ import os
+ import inspect
+ import datetime
+ 
+-from problem import proxies, exception, tools
++from problem import proxies, exception, tools, watch
+ 
+ JAVA = 'java'
+ SELINUX = 'selinux'
+@@ -266,3 +266,15 @@ def get(identifier, auth=False, __proxy = proxies.get_proxy()):
+         return None
+ 
+     return tools.problemify(identifier, __proxy)
++
++def get_problem_watcher(auth=False):
++    ''' Return ``ProblemWatcher`` object which can be used
++    to attach callbacks called when new problem is created
++
++    Use ``auth=True`` if authentication should be attempted for
++    new problem that doesn't belong to current user. If not
++    set such a problem is ignored.
++
++    '''
++
++    return watch.ProblemWatcher(auth)
+diff --git a/src/python-problem/problem/proxies.py b/src/python-problem/problem/proxies.py
+index e3dea9c..de6be68 100644
+--- a/src/python-problem/problem/proxies.py
++++ b/src/python-problem/problem/proxies.py
+@@ -118,6 +118,8 @@ class SocketProxy(object):
+         raise NotImplementedError
+     def list_all(self, *args):
+         return self.list(*args)
++    def get_problem_watcher(self):
++        raise NotImplementedError
+ 
+ class FsProxy(object):
+     def __init__(self, directory):
+diff --git a/src/python-problem/problem/tools.py b/src/python-problem/problem/tools.py
+index 892ba2e..27bd4fd 100644
+--- a/src/python-problem/problem/tools.py
++++ b/src/python-problem/problem/tools.py
+@@ -1,3 +1,6 @@
++import os
++import logging
++
+ import problem
+ 
+ def problemify(probdir, proxy):
+diff --git a/src/python-problem/problem/watch.py b/src/python-problem/problem/watch.py
+new file mode 100644
+index 0000000..37a3833
+--- /dev/null
++++ b/src/python-problem/problem/watch.py
+@@ -0,0 +1,67 @@
++import os
++import logging
++
++import dbus
++import dbus.mainloop.glib
++import gobject
++
++import problem
++
++class ProblemWatcher(object):
++    ''' New problem signal handler attached to DBus signal
++
++    Use ``auth=True`` if authentication should be attempted for
++    new problem that doesn't belong to current user. If not
++    set such a problem is ignored.
++
++    '''
++
++    def __init__(self, auth):
++
++        gobject.threads_init()
++
++        bus = dbus.SystemBus(
++                mainloop=dbus.mainloop.glib.DBusGMainLoop(),
++                private=True)
++
++        self.bus = bus
++        self.auth = auth
++        self.callbacks = []
++
++        # local context required!?
++        # http://rmarko.fedorapeople.org/random/high_five.jpg
++        evt_match = self.bus.add_signal_receiver(
++            self._new_problem_handler,
++            signal_name='Crash', path='/org/freedesktop/problems')
++
++        self.loop = gobject.MainLoop()
++
++    def _new_problem_handler(self, comp, ddir, uid):
++        logging.debug('New problem notification received')
++        if int(uid) != os.getuid() and not self.auth:
++            logging.debug('Auth disabled, ignoring crash with'
++                ' uid: {0}'.format(uid))
++            return
++
++        prob = problem.tools.problemify(ddir, problem.proxies.get_proxy())
++        for cb in self.callbacks:
++            cb(prob)
++
++    def add_callback(self, fun):
++        ''' Add callback to be called when new problem occurs.
++
++        Each callback function receives ``Problem`` instance
++
++        '''
++
++        self.callbacks.append(fun)
++
++    def run(self):
++        ''' Start event listener loop '''
++
++        self.loop.run()
++
++    def quit(self):
++        ''' Stop event listener loop '''
++
++        self.loop.quit()
+-- 
+1.8.2.1
+

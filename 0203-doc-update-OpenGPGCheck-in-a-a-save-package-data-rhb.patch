@@ -1,0 +1,34 @@
+From 42acd71cb63cb9fa28b92601fce98af09eecad3d Mon Sep 17 00:00:00 2001
+From: Richard Marko <rmarko@redhat.com>
+Date: Tue, 10 Sep 2013 13:30:46 +0200
+Subject: [ABRT PATCH 203/209] doc: update OpenGPGCheck in
+ a-a-save-package-data rhbz#997922
+
+OpenGPGCheck is enabled by default and if it's enabled
+crashes in unsigned packages are not handled at all.
+
+Signed-off-by: Richard Marko <rmarko@redhat.com>
+Signed-off-by: Jakub Filak <jfilak@redhat.com>
+---
+ doc/abrt-action-save-package-data.conf.txt | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/doc/abrt-action-save-package-data.conf.txt b/doc/abrt-action-save-package-data.conf.txt
+index b377ec7..eb593ee 100644
+--- a/doc/abrt-action-save-package-data.conf.txt
++++ b/doc/abrt-action-save-package-data.conf.txt
+@@ -15,9 +15,9 @@ The configuration file consists of items in the format "Option = Value".
+ A description of each item follows:
+ 
+ OpenGPGCheck = 'yes' | 'no'::
+-   When set to 'yes', 'abrt' will report crashes only in executables which belong
++   When set to 'yes', 'abrt' will handle only crashes in executables which belong
+    to an installed package with valid GPG signature.
+-   The default is 'no'.
++   The default is 'yes'.
+    The files containing trusted GPG keys which are used to verify
+    the signatures are listed in the gpg_keys configuration file.
+ BlackList = 'packageName', 'packageName' ...::
+-- 
+1.8.3.1
+

@@ -1,0 +1,78 @@
+From b859618acedaed70fbf1a2f1683b7568fbf6ae75 Mon Sep 17 00:00:00 2001
+From: Jiri Moskovcak <jmoskovc@redhat.com>
+Date: Thu, 23 Feb 2012 21:13:09 +0100
+Subject: [PATCH 023/105] added man page for a-a-analyze-vmcore
+
+---
+ doc/Makefile.am                    |  1 +
+ doc/abrt-action-analyze-vmcore.txt | 46 ++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 48 insertions(+)
+ create mode 100644 doc/abrt-action-analyze-vmcore.txt
+
+diff --git a/doc/Makefile.am b/doc/Makefile.am
+index 908827c..3d646a5 100644
+--- a/doc/Makefile.am
++++ b/doc/Makefile.am
+@@ -15,6 +15,7 @@ MAN1_TXT += abrt-server.txt
+ MAN1_TXT += abrt-cli.txt
+ MAN1_TXT += abrt-action-save-package-data.txt
+ MAN1_TXT += abrt-install-ccpp-hook.txt
++MAN1_TXT += abrt-action-analyze-vmcore.txt
+ 
+ MAN5_TXT =
+ MAN5_TXT += abrt.conf.txt
+diff --git a/doc/abrt-action-analyze-vmcore.txt b/doc/abrt-action-analyze-vmcore.txt
+new file mode 100644
+index 0000000..fef59b4
+--- /dev/null
++++ b/doc/abrt-action-analyze-vmcore.txt
+@@ -0,0 +1,46 @@
++abrt-action-analyze-vmcore(1)
++=============================
++
++NAME
++----
++abrt-action-analyze-vmcore - Extracts the oops message from the kernel
++core and install the kernel debuginfo if needed
++
++SYNOPSIS
++--------
++'abrt-action-analyze-vmcore' [-v] [-d PROBLEM_DIR] [--tmpdir=TMPDIR] [--cache=DIR1[:DIR2]]
++
++DESCRIPTION
++-----------
++The tool reads the file named 'vmcore' from a problem data
++directory, processes it and the oops message from it. Then it saves this data as
++new element 'backtrace'.
++
++Integration with ABRT events
++~~~~~~~~~~~~~~~~~~~~~~~~~~~~
++'abrt-action-analyze-vmcore' can be used as an analyzer for critical kernel
++crashes which dump core.
++
++Example usage in report_event.conf:
++
++------------
++EVENT=analyze_VMcore analyzer=vmcore
++        abrt-action-analyze-vmcore
++
++------------
++
++OPTIONS
++-------
++-d DIR::
++   Path to a problem directory. Current working directory is used when
++   this option is not provided.
++
++-v::
++   Be more verbose. Can be given multiple times.
++
++-d DIR1[:DIR2]::
++   Additional debuginfo directories
++
++AUTHORS
++-------
++* ABRT team
+-- 
+1.7.11.2
+

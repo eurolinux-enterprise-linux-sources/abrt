@@ -1,0 +1,37 @@
+From 842271e9e7e3a9bde99a5204490f50acc767d537 Mon Sep 17 00:00:00 2001
+From: Richard Marko <rmarko@redhat.com>
+Date: Wed, 9 Jan 2013 15:20:28 +0100
+Subject: [ABRT EL6 PATCH 173/197] abrt-python: minor test updates
+
+---
+ src/python-problem/tests/test_api.py | 7 +++++++
+ 1 file changed, 7 insertions(+)
+
+diff --git a/src/python-problem/tests/test_api.py b/src/python-problem/tests/test_api.py
+index c38b734..0cdd81f 100755
+--- a/src/python-problem/tests/test_api.py
++++ b/src/python-problem/tests/test_api.py
+@@ -230,6 +230,11 @@ class ProblemAPITestCase(ProblematicTestCase):
+         prob.delete()
+ 
+     def test_time_cast(self):
++
++        if type(self.proxy) == problem.proxies.DBusProxy:
++            # set_item time is not allowed by the daemon
++            return unittest.skip('Skipping time cast test on DBusProxy')
++
+         prob = self.create_problem()
+ 
+         prob.add_current_process_data()
+@@ -295,6 +300,8 @@ class ProblemAPITestCase(ProblematicTestCase):
+         ident = prob.save()
+         prob.delete()
+ 
++        time.sleep(2)
++
+         with self.assertRaises(problem.exception.InvalidProblem):
+             self.proxy.get_item(ident, 'reason')
+ 
+-- 
+1.8.2.1
+

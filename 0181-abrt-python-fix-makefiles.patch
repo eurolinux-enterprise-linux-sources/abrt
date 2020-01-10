@@ -1,0 +1,45 @@
+From a508c1088947a25839a618b1c87623e6c4a5c671 Mon Sep 17 00:00:00 2001
+From: Richard Marko <rmarko@redhat.com>
+Date: Fri, 22 Feb 2013 17:31:46 +0100
+Subject: [ABRT EL6 PATCH 181/197] abrt-python: fix makefiles
+
+config.py.in was not processed on make all causing
+errors while building sphinx documentation.
+---
+ src/python-problem/doc/Makefile.am     | 5 ++++-
+ src/python-problem/problem/Makefile.am | 2 ++
+ 2 files changed, 6 insertions(+), 1 deletion(-)
+
+diff --git a/src/python-problem/doc/Makefile.am b/src/python-problem/doc/Makefile.am
+index 8f70c08..1a332de 100644
+--- a/src/python-problem/doc/Makefile.am
++++ b/src/python-problem/doc/Makefile.am
+@@ -38,6 +38,9 @@ help:
+ 	@echo "  linkcheck  to check all external links for integrity"
+ 	@echo "  doctest    to run all doctests embedded in the documentation (if enabled)"
+ 
++problem-config:
++	cd ../problem && $(MAKE) $(AM_MAKEFLAGS) all
++
+ clean-local:
+ 	-rm -rf $(BUILDDIR)/*
+ 
+@@ -161,4 +164,4 @@ EXTRA_DIST = \
+ 
+ man5_MANS = _build/man/abrt-python.5
+ 
+-_build/man/abrt-python.5: man
++_build/man/abrt-python.5: problem-config man
+diff --git a/src/python-problem/problem/Makefile.am b/src/python-problem/problem/Makefile.am
+index 83acbd5..55b24f9 100644
+--- a/src/python-problem/problem/Makefile.am
++++ b/src/python-problem/problem/Makefile.am
+@@ -7,3 +7,5 @@ config.py: config.py.in
+ 		$< >$@
+ 
+ EXTRA_DIST = config.py.in
++
++all-local: config.py
+-- 
+1.8.2.1
+

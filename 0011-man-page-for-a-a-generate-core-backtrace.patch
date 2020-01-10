@@ -1,0 +1,121 @@
+From 741245853f667d23cc25b53d0813bf4755c67cd7 Mon Sep 17 00:00:00 2001
+From: Martin Milata <mmilata@redhat.com>
+Date: Tue, 21 Feb 2012 16:37:19 +0100
+Subject: [PATCH 011/105] man page for a-a-generate-core-backtrace
+
+---
+ doc/Makefile.am                             |  1 +
+ doc/abrt-action-generate-core-backtrace.txt | 89 +++++++++++++++++++++++++++++
+ 3 files changed, 91 insertions(+)
+ create mode 100644 doc/abrt-action-generate-core-backtrace.txt
+
+diff --git a/doc/Makefile.am b/doc/Makefile.am
+index 5025f93..908827c 100644
+--- a/doc/Makefile.am
++++ b/doc/Makefile.am
+@@ -4,6 +4,7 @@ MAN1_TXT =
+ MAN1_TXT += abrt-action-analyze-c.txt
+ MAN1_TXT += abrt-action-trim-files.txt
+ MAN1_TXT += abrt-action-generate-backtrace.txt
++MAN1_TXT += abrt-action-generate-core-backtrace.txt
+ MAN1_TXT += abrt-action-analyze-backtrace.txt
+ MAN1_TXT += abrt-action-analyze-oops.txt
+ MAN1_TXT += abrt-action-analyze-python.txt
+diff --git a/doc/abrt-action-generate-core-backtrace.txt b/doc/abrt-action-generate-core-backtrace.txt
+new file mode 100644
+index 0000000..0163ac5
+--- /dev/null
++++ b/doc/abrt-action-generate-core-backtrace.txt
+@@ -0,0 +1,89 @@
++abrt-action-generate-core-backtrace(1)
++=====================================
++
++NAME
++----
++abrt-action-generate-core-backtrace - Generates coredump-level (debuginfo-free)
++backtrace
++
++SYNOPSIS
++--------
++'abrt-action-generate-core-backtrace' [-v] [-d DIR]
++
++DESCRIPTION
++-----------
++This tool uses coredump from the file 'coredump' and binary at the path stored
++in file 'executable' in the problem directory to generate coredump-level
++backtrace.
++
++Coredump-level backtrace resembles ordinary backtrace in that it contains
++information about call frames present on the stack at the time of the crash.
++However, it only contains information that can be obtained from the coredump
++without debugging symbols available - mainly relative addresses of
++the stored instruction pointers. Such backtrace can still be useful
++for reporting and reproducing the bug and does not require debugging
++information files to be installed.  See <<X1,*FILE FORMAT*>> for the
++description of the generated file.
++
++The result is saved in the problem directory in a file named
++'core_backtrace'.
++
++Integration with libreport events
++~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
++'abrt-action-generate-core-backtrace' can be used as an analyzer for
++application crashes which dump core.
++
++Example usage in report_event.conf:
++
++------------
++EVENT=analyze analyzer=CCpp
++        abrt-action-generate-core-backtrace
++------------
++
++OPTIONS
++-------
++-d DIR::
++   Path to problem directory.
++
++-v::
++   Be more verbose. Can be given multiple times.
++
++[[X1]]
++FILE FORMAT
++-----------
++
++The generated file is a text file containing one line for each stack frame of
++the thread that most likely caused the crash. The line has following format:
++
++------------
++BUILD_ID OFFSET SYMBOL MODNAME FINGERPRINT
++------------
++
++Where:
++
++*BUILD_ID*::
++  Build ID of the binary file the address is mapped to as a hexadecimal string.
++
++*OFFSET*::
++  Offset from the start of the executable section of aforementioned file the
++  stored instruction pointer points to. Number in hexadecimal format.
++
++*SYMBOL*::
++  Name of the function if it is present in the binary (which is often the case
++  for shared libraries).
++
++*MODNAME*::
++  Name of the module. Contains name of a library or *[exe]* if it is the
++  executable.
++
++*FINGERPRINT*::
++  Fingerprint of the function the instruction pointer points to. Not yet
++  implemented.
++
++Dash in place of any of the parts indicates that the part is unknown.
++
++
++
++AUTHORS
++-------
++* ABRT team
+-- 
+1.7.11.2
+

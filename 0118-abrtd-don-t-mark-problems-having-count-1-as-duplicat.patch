@@ -1,0 +1,27 @@
+From 06abecb069a1b662f48a401d27603f55894ed271 Mon Sep 17 00:00:00 2001
+From: Jakub Filak <jfilak@redhat.com>
+Date: Wed, 12 Dec 2012 18:08:57 +0100
+Subject: [PATCH 118/130] abrtd: don't mark problems having count > 1 as
+ duplicates. Closes rhbz#886631
+
+Signed-off-by: Jakub Filak <jfilak@redhat.com>
+---
+ src/daemon/abrtd.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/src/daemon/abrtd.c b/src/daemon/abrtd.c
+index 36a6c0e..2dd6413 100644
+--- a/src/daemon/abrtd.c
++++ b/src/daemon/abrtd.c
+@@ -370,7 +370,7 @@ static mw_result_t run_post_create_and_load_data(const char *dump_dir_name, prob
+     if (*problem_data != NULL)
+     {
+         res = MW_OK;
+-        if (count > 1)
++        if (dup_of_dir)
+         {
+             log("Problem directory is a duplicate of %s", dump_dir_name);
+             res = MW_OCCURRED;
+-- 
+1.7.7.6
+

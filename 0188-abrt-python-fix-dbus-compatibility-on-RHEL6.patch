@@ -1,0 +1,45 @@
+From 7f6f7265fbdcc18f5ddebea96bd1f535cfdffefd Mon Sep 17 00:00:00 2001
+From: Richard Marko <rmarko@fedoraproject.org>
+Date: Thu, 9 May 2013 14:19:51 +0200
+Subject: [ABRT EL6 PATCH 188/197] abrt-python: fix dbus compatibility on RHEL6
+
+Related to #651.
+
+Signed-off-by: Richard Marko <rmarko@fedoraproject.org>
+---
+ src/python-problem/problem/watch.py | 8 +++++++-
+ 1 file changed, 7 insertions(+), 1 deletion(-)
+
+diff --git a/src/python-problem/problem/watch.py b/src/python-problem/problem/watch.py
+index 2f83fde..49ec395 100644
+--- a/src/python-problem/problem/watch.py
++++ b/src/python-problem/problem/watch.py
+@@ -16,11 +16,12 @@ class ProblemWatcher(object):
+     def __init__(self, auth):
+         import dbus
+         import gobject
++        from dbus.mainloop.glib import DBusGMainLoop
+ 
+         gobject.threads_init()
+ 
+         bus = dbus.SystemBus(
+-            mainloop=dbus.mainloop.glib.DBusGMainLoop(),
++            mainloop=DBusGMainLoop(),
+             private=True)
+ 
+         self.bus = bus
+@@ -33,6 +34,11 @@ class ProblemWatcher(object):
+             self._new_problem_handler,
+             signal_name='Crash', path='/org/freedesktop/problems')
+ 
++        # add second listener for the old path
++        evt_match_old_path = self.bus.add_signal_receiver(
++            self._new_problem_handler,
++            signal_name='Crash', path='/com/redhat/abrt')
++
+         self.loop = gobject.MainLoop()
+ 
+     def _new_problem_handler(self, comp, ddir, uid):
+-- 
+1.8.2.1
+

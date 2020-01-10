@@ -1,0 +1,99 @@
+From fa1cd572f1ae00b3017d72da207d867aaebf8483 Mon Sep 17 00:00:00 2001
+From: Jiri Moskovcak <jmoskovc@redhat.com>
+Date: Mon, 6 Aug 2012 13:51:58 +0200
+Subject: [PATCH 102/105] remove retrace client
+
+---
+ doc/Makefile.am         |  1 -
+ po/POTFILES.in          |  2 --
+ src/plugins/Makefile.am | 20 --------------------
+ 3 files changed, 23 deletions(-)
+
+diff --git a/doc/Makefile.am b/doc/Makefile.am
+index 3d646a5..1861ff1 100644
+--- a/doc/Makefile.am
++++ b/doc/Makefile.am
+@@ -9,7 +9,6 @@ MAN1_TXT += abrt-action-analyze-backtrace.txt
+ MAN1_TXT += abrt-action-analyze-oops.txt
+ MAN1_TXT += abrt-action-analyze-python.txt
+ MAN1_TXT += abrt-action-list-dsos.txt
+-MAN1_TXT += abrt-retrace-client.txt
+ MAN1_TXT += abrt-handle-upload.txt
+ MAN1_TXT += abrt-server.txt
+ MAN1_TXT += abrt-cli.txt
+diff --git a/po/POTFILES.in b/po/POTFILES.in
+index cbd31b0..c76df42 100644
+--- a/po/POTFILES.in
++++ b/po/POTFILES.in
+@@ -22,9 +22,7 @@ src/plugins/abrt-action-install-debuginfo
+ src/plugins/abrt-action-trim-files.c
+ src/plugins/abrt-dedup-client.c
+ src/plugins/abrt-dump-oops.c
+-src/plugins/abrt-retrace-client.c
+ src/plugins/analyze_LocalGDB.xml.in
+-src/plugins/analyze_RetraceServer.xml.in
+ src/plugins/collect_xsession_errors.xml.in
+ src/plugins/https-utils.c
+ 
+diff --git a/src/plugins/Makefile.am b/src/plugins/Makefile.am
+index e922f61..3e67973 100644
+--- a/src/plugins/Makefile.am
++++ b/src/plugins/Makefile.am
+@@ -15,7 +15,6 @@ bin_PROGRAMS = \
+     abrt-action-generate-backtrace \
+     abrt-action-generate-core-backtrace \
+     abrt-action-analyze-backtrace \
+-    abrt-retrace-client \
+     abrt-dedup-client
+ 
+ libexec_PROGRAMS = abrt-action-install-debuginfo-to-abrt-cache
+@@ -26,7 +25,6 @@ eventsdir = $(EVENTS_DIR)
+ 
+ dist_events_DATA = \
+     analyze_LocalGDB.xml \
+-    analyze_RetraceServer.xml \
+     analyze_VMcore.xml \
+     collect_xsession_errors.xml \
+     collect_Smolt.xml \
+@@ -40,7 +38,6 @@ eventsconfdir = $(EVENTS_CONF_DIR)
+ 
+ dist_eventsconf_DATA = \
+     ccpp_event.conf \
+-    ccpp_retrace_event.conf \
+     koops_event.conf \
+     vmcore_event.conf \
+     python_event.conf \
+@@ -64,7 +61,6 @@ EXTRA_DIST = \
+     collect_vimrc_user.xml.in \
+     collect_vimrc_system.xml.in \
+     analyze_LocalGDB.xml.in \
+-    analyze_RetraceServer.xml.in \
+     analyze_VMcore.xml.in \
+     abrt-action-analyze-vmcore \
+     https-utils.h
+@@ -199,22 +195,6 @@ abrt_action_install_debuginfo_to_abrt_cache_LDADD = \
+      $(LIBREPORT_LIBS) \
+      ../lib/libabrt.la
+ 
+-abrt_retrace_client_SOURCES = \
+-    abrt-retrace-client.c \
+-    https-utils.c
+- abrt_retrace_client_CFLAGS = \
+-    -I$(srcdir)/../include \
+-    -I$(srcdir)/../lib \
+-     $(NSS_CFLAGS) \
+-     $(GLIB_CFLAGS) \
+-     -D_GNU_SOURCE \
+-     $(LIBREPORT_CFLAGS) \
+-     -Wall -Wwrite-strings -Werror
+- abrt_retrace_client_LDADD = \
+-     $(LIBREPORT_LIBS) \
+-     $(BTPARSER_LIBS) \
+-     $(NSS_LIBS)
+-
+ abrt_dedup_client_SOURCES = \
+     abrt-dedup-client.c \
+     https-utils.c
+-- 
+1.7.11.2
+

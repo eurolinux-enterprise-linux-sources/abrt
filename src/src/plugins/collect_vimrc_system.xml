@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<event>
+    <name>Collect system-wide vim configuration files</name>
+    <name xml:lang="or">ତନ୍ତ୍ର-ମୟ vim ସଂରଚନା ଫାଇଲଗୁଡ଼ିକୁ ସଂଗ୍ରହ କରିଥାଏ</name>
+    <name xml:lang="pl">Zbiera systemowe pliki konfiguracji programu vim</name>
+    <name xml:lang="zh_TW">收集系統域 vim 組態檔</name>
+    <description>Save /etc/vimrc and /etc/gvimrc</description>
+    <long-description>Checks if there are vimrc and gvimrc files in /etc and saves them as system_vimrc and system_gvimrc, respectively.</long-description>
+    <long-description xml:lang="or">vimrc ଏବଂ gvimrc ଫାଇଲଗୁଡ଼ିକ /etc ରେ ଅଛି କି ନାହିଁ ଯାଞ୍ଚ କରନ୍ତୁ ଏବଂ ସେଗୁଡ଼ିକୁsystem_vimrc ଏବଂ system_gvimrc ଭାବରେ ସଂରକ୍ଷଣ କରିଥାଏ।</long-description>
+    <long-description xml:lang="ru">Проверка папки /etc на наличие файлов vimrc и gvimrc и вложение последних в отчёты как system_vimrc и system_gvimrc.</long-description>
+    <creates-items>system_vimrc,system_gvimrc</creates-items>
+</event>

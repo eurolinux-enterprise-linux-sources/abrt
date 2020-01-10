@@ -1,0 +1,26 @@
+From 1e8b421bab5743e08047c498f95998b87dce25c1 Mon Sep 17 00:00:00 2001
+From: Jiri Moskovcak <jmoskovc@redhat.com>
+Date: Tue, 12 Mar 2013 12:39:29 +0100
+Subject: [ABRT EL6 PATCH 145/197] disable (again) bugzilla and bodhi related
+ to: rhbz#828673 rhbz#810309
+
+---
+ src/plugins/ccpp_event.conf | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/plugins/ccpp_event.conf b/src/plugins/ccpp_event.conf
+index 7bb2c9b..fff903b 100644
+--- a/src/plugins/ccpp_event.conf
++++ b/src/plugins/ccpp_event.conf
+@@ -34,7 +34,7 @@ EVENT=collect_xsession_errors analyzer=CCpp dso_list~=.*/libX11.*
+ EVENT=analyze_LocalGDB analyzer=CCpp
+ 	# debuginfo install is disabled by default on rhel
+ 	# if you want to enable it, just remove the --without-di
+-        abrt-action-analyze-ccpp-local --without-di
++        abrt-action-analyze-ccpp-local --without-di --without-bz --without-bodhi
+ 
+ 
+ # Bugzilla requires nonempty duphash
+-- 
+1.8.2.1
+

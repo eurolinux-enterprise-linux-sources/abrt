@@ -1,0 +1,38 @@
+From dbc5aede20ed87f6b7dcb4040d26655e5437c1d2 Mon Sep 17 00:00:00 2001
+From: Jiri <moskovcak@gmail.com>
+Date: Mon, 19 Mar 2012 15:08:48 +0100
+Subject: [PATCH 067/105] mark some strings in the event xml as translatable
+ rhbz#734298
+
+---
+ src/plugins/collect_Smolt.xml.in           | 2 +-
+ src/plugins/collect_xsession_errors.xml.in | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/src/plugins/collect_Smolt.xml.in b/src/plugins/collect_Smolt.xml.in
+index 58d4f3e..4d298f0 100644
+--- a/src/plugins/collect_Smolt.xml.in
++++ b/src/plugins/collect_Smolt.xml.in
+@@ -1,6 +1,6 @@
+ <?xml version="1.0" encoding="UTF-8" ?>
+ <event>
+-    <name>Collect Smolt profile</name>
++    <_name>Collect Smolt profile</name_>
+     <_description>Save your computer's hardware profile information</_description>
+     <_long-description>
+     Runs smoltSendProfile -p and saves its output as 'smolt_data' element.
+diff --git a/src/plugins/collect_xsession_errors.xml.in b/src/plugins/collect_xsession_errors.xml.in
+index 1e3d738..7efe3ea 100644
+--- a/src/plugins/collect_xsession_errors.xml.in
++++ b/src/plugins/collect_xsession_errors.xml.in
+@@ -1,6 +1,6 @@
+ <?xml version="1.0" encoding="UTF-8" ?>
+ <event>
+-    <name>Collect .xsession-errors</name>
++    <_name>Collect .xsession-errors</name_>
+     <_description>Save relevant lines from ~/.xsession-errors file</_description>
+     <_long-description>
+     Scans through ~/.xsession-errors file and saves those lines which contain executable's name.
+-- 
+1.7.11.2
+

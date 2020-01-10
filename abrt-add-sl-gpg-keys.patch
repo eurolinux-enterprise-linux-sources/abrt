@@ -1,0 +1,8 @@
+--- abrt-2.0.3/src/daemon/gpg_keys	2011-12-21 15:08:40.076882593 -0600
++++ abrt-2.0.3/src/daemon/gpg_keys_sl	2011-12-21 15:08:54.147740865 -0600
+@@ -3,3 +3,5 @@
+ /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-legacy-release
+ /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-legacy-rhx
+ /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
++/etc/pki/rpm-gpg/RPM-GPG-KEY-sl6
++/etc/pki/rpm-gpg/RPM-GPG-KEY-sl

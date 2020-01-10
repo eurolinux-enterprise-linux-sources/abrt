@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<event>
+    <name>Collect GConf configuration</name>
+    <name xml:lang="hu">GConf konfiguráció begyüjtése</name>
+    <description>Save configuration from application's GConf directory</description>
+    <long-description>Runs gconftool-2 --recursive-list /apps/executable and saves it as 'gconf_subtree' element.</long-description>
+    <long-description xml:lang="es">Ejecuta gconftool-2 --recursive-list /apps/executable y lo guarda como elemento 'gconf_subtree'.</long-description>
+    <long-description xml:lang="ru">Запуск gconftool-2 --recursive-list /apps/executable с сохранением данных в ячейку «gconf_subtree».</long-description>
+    <creates-items>gconf_subtree</creates-items>
+</event>

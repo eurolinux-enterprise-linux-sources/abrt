@@ -1,0 +1,47 @@
+From 1fb57cafc95c5626f3c86cf770c3e1bdc0bd433e Mon Sep 17 00:00:00 2001
+From: Denys Vlasenko <vda.linux@googlemail.com>
+Date: Thu, 13 Dec 2012 17:28:43 +0100
+Subject: [ABRT EL6 PATCH 119/200] rhbz#852760: fix loop condition in
+ generation of oops duphash
+
+Signed-off-by: Jakub Filak <jfilak@redhat.com>
+Signed-off-by: Denys Vlasenko <vda.linux@googlemail.com>
+---
+ src/lib/kernel.c | 8 ++++++--
+ 1 file changed, 6 insertions(+), 2 deletions(-)
+
+diff --git a/src/lib/kernel.c b/src/lib/kernel.c
+index ed7c754..7ce61bb 100644
+--- a/src/lib/kernel.c
++++ b/src/lib/kernel.c
+@@ -378,6 +378,8 @@ void koops_hash_str(char hash_str[SHA1_RESULT_LEN*2 + 1], char *oops_buf, const
+     // [<c0460a56>] ? audit_syscall_entry+0xf9/0x123
+     // [<c049b460>] ? sys_ioctl+0x40/0x5c
+     // [<c0403c76>] ? syscall_call+0x7/0xb
++    // Code:...  <======== we should ignore everything which isn't call trace
++    // RIP  ...
+     struct strbuf *kernel_bt = strbuf_new();
+     char *call_trace = strstr(oops_buf, "Call Trace");
+     if (call_trace)
+@@ -385,14 +387,16 @@ void koops_hash_str(char hash_str[SHA1_RESULT_LEN*2 + 1], char *oops_buf, const
+         call_trace += sizeof("Call Trace\n");
+         char *end_line = strchr(call_trace, '\n');
+         int i = 0;
+-        while (end_line && !*end_line)
++        while (end_line && end_line[0] != '\0')
+         {
+             char *line = xstrndup(call_trace, end_line - call_trace);
+ 
+             char *p = skip_whitespace(line);
+             char *end_mem_block = strchr(p, ' ');
+             if (!end_mem_block)
+-                error_msg_and_die("no [<mem>] mark");
++                break; /* no memblock, we are done */
++            if (p[0] != '[' || p[1] != '<' || end_mem_block[-2] != '>' || end_mem_block[-1] != ']')
++                break; /* no memblock, we are done */
+ 
+             end_mem_block = skip_whitespace(end_mem_block);
+ 
+-- 
+1.8.3.1
+

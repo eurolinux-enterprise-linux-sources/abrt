@@ -1,0 +1,50 @@
+From e491bcfce6baf0ea7a3584bffb93d66c64125a90 Mon Sep 17 00:00:00 2001
+From: Jiri Moskovcak <jmoskovc@redhat.com>
+Date: Thu, 23 Aug 2012 10:26:45 +0200
+Subject: [PATCH 113/113] don't print error msg if dbus-send is missing
+ rhbz#811901
+
+---
+ src/daemon/abrt_event.conf | 20 ++++++++++++--------
+ 1 file changed, 12 insertions(+), 8 deletions(-)
+
+diff --git a/src/daemon/abrt_event.conf b/src/daemon/abrt_event.conf
+index 992eb92..19b82f3 100644
+--- a/src/daemon/abrt_event.conf
++++ b/src/daemon/abrt_event.conf
+@@ -61,20 +61,24 @@ EVENT=post-create
+ 
+ 
+ EVENT=notify package!= uid!=
+-	dbus-send --system --type=signal /com/redhat/abrt com.redhat.abrt.Crash \
+-	string:"`cat package`" string:"$DUMP_DIR" string:"`cat uid`"
++    if [ ! -x "/bin/dbus-send" ]; then exit 0; fi
++    dbus-send --system --type=signal /com/redhat/abrt com.redhat.abrt.Crash \
++    string:"`cat package`" string:"$DUMP_DIR" string:"`cat uid`"
+ 
+ EVENT=notify package!= uid=
+-	dbus-send --system --type=signal /com/redhat/abrt com.redhat.abrt.Crash \
+-	string:"`cat package`" string:"$DUMP_DIR"
++    if [ ! -x "/bin/dbus-send" ]; then exit 0; fi
++    dbus-send --system --type=signal /com/redhat/abrt com.redhat.abrt.Crash \
++    string:"`cat package`" string:"$DUMP_DIR" >& /dev/null
+ 
+ EVENT=notify_dup package!= uid!=
+-	dbus-send --system --type=signal /com/redhat/abrt com.redhat.abrt.Crash \
+-	string:"`cat package`" string:"$DUMP_DIR" string:"`cat uid`"
++    if [ ! -x "/bin/dbus-send" ]; then exit 0; fi
++    dbus-send --system --type=signal /com/redhat/abrt com.redhat.abrt.Crash \
++    string:"`cat package`" string:"$DUMP_DIR" string:"`cat uid`"
+ 
+ EVENT=notify_dup package!= uid=
+-	dbus-send --system --type=signal /com/redhat/abrt com.redhat.abrt.Crash \
+-	string:"`cat package`" string:"$DUMP_DIR"
++    if [ ! -x "/bin/dbus-send" ]; then exit 0; fi
++    dbus-send --system --type=signal /com/redhat/abrt com.redhat.abrt.Crash \
++    string:"`cat package`" string:"$DUMP_DIR"
+ 
+ 
+ # Example: if you want to save sosreport immediately at the moment of a crash:
+-- 
+1.7.11.4
+

@@ -1,0 +1,32 @@
+From 6ac81a2937a4cbfa71c2a5268ea21bedbff09e90 Mon Sep 17 00:00:00 2001
+From: Jiri Moskovcak <jmoskovc@redhat.com>
+Date: Mon, 6 Aug 2012 10:14:32 +0200
+Subject: [PATCH 091/105] blacklist more usual suspects which are usually not
+ guilty
+
+---
+ src/daemon/abrt-action-save-package-data.conf | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/src/daemon/abrt-action-save-package-data.conf b/src/daemon/abrt-action-save-package-data.conf
+index 18be125..643259a 100644
+--- a/src/daemon/abrt-action-save-package-data.conf
++++ b/src/daemon/abrt-action-save-package-data.conf
+@@ -7,7 +7,7 @@ OpenGPGCheck = yes
+ 
+ # Blacklisted packages
+ #
+-BlackList = nspluginwrapper,valgrind,strace
++BlackList = nspluginwrapper, valgrind, strace, mono-core
+ 
+ # Process crashes in executables which do not belong to any package?
+ #
+@@ -15,4 +15,4 @@ ProcessUnpackaged = no
+ 
+ # Blacklisted executable paths (shell patterns)
+ #
+-BlackListedPaths = /usr/share/doc/*,*/example*
++BlackListedPaths = /usr/share/doc/*, */example*, /usr/bin/nspluginviewer, /usr/lib/xulrunner-*/plugin-container
+-- 
+1.7.11.2
+

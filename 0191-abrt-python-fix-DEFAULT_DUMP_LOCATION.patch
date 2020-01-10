@@ -1,0 +1,25 @@
+From 86a2b4601e7f4a6b632dddcfa366c782fb73070c Mon Sep 17 00:00:00 2001
+From: Richard Marko <rmarko@redhat.com>
+Date: Mon, 13 May 2013 11:41:53 +0200
+Subject: [ABRT EL6 PATCH 191/197] abrt-python: fix DEFAULT_DUMP_LOCATION
+
+---
+ src/python-problem/problem/Makefile.am | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/python-problem/problem/Makefile.am b/src/python-problem/problem/Makefile.am
+index 55b24f9..81aee6d 100644
+--- a/src/python-problem/problem/Makefile.am
++++ b/src/python-problem/problem/Makefile.am
+@@ -3,7 +3,7 @@ problem_PYTHON = __init__.py exception.py proxies.py tools.py watch.py config.py
+ problemdir = $(pythondir)/problem
+ 
+ config.py: config.py.in
+-	sed -e s,\@DEFAULT_DUMP_LOCATION\@,$(DEFAULT_DUMP_LOCATION),g \
++	sed -e s,\@DEFAULT_DUMP_LOCATION\@,/var/spool/abrt,g \
+ 		$< >$@
+ 
+ EXTRA_DIST = config.py.in
+-- 
+1.8.2.1
+

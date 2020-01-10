@@ -1,0 +1,23 @@
+From c0302f2d87a16d489ddb5ea22b0c35873cb62e4b Mon Sep 17 00:00:00 2001
+From: Jiri Moskovcak <jmoskovc@redhat.com>
+Date: Mon, 23 Jul 2012 16:44:24 +0200
+Subject: [PATCH 085/105] use rhel gpg keys
+
+---
+ src/daemon/gpg_keys | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
+
+diff --git a/src/daemon/gpg_keys b/src/daemon/gpg_keys
+index cde50f1..6c78b5d 100644
+--- a/src/daemon/gpg_keys
++++ b/src/daemon/gpg_keys
+@@ -1 +1,5 @@
+-/etc/pki/rpm-gpg/RPM-GPG-KEY-fedora
++/etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-beta
++/etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-legacy-former
++/etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-legacy-release
++/etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-legacy-rhx
++/etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
+-- 
+1.7.11.2
+

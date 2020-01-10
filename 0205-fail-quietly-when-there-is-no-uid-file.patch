@@ -1,0 +1,28 @@
+From a2f98ca90b734920d3ba10a96352d6e675e7369d Mon Sep 17 00:00:00 2001
+From: Richard Marko <rmarko@redhat.com>
+Date: Wed, 19 Sep 2012 16:01:46 +0200
+Subject: [ABRT PATCH 205/207] fail quietly when there is no uid file
+
+Resolves: rhbz#1022160
+
+Signed-off-by: Jakub Filak <jfilak@redhat.com>
+---
+ src/daemon/abrt-handle-event.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/daemon/abrt-handle-event.c b/src/daemon/abrt-handle-event.c
+index 58c4a84..9d1da4a 100644
+--- a/src/daemon/abrt-handle-event.c
++++ b/src/daemon/abrt-handle-event.c
+@@ -438,7 +438,7 @@ int main(int argc, char **argv)
+         if (!dd)
+             return 1;
+ 
+-        uid = dd_load_text(dd, FILENAME_UID);
++        uid = dd_load_text_ext(dd, FILENAME_UID, DD_FAIL_QUIETLY_ENOENT);
+         dd_close(dd);
+ 
+         struct run_event_state *run_state = new_run_event_state();
+-- 
+1.8.3.1
+

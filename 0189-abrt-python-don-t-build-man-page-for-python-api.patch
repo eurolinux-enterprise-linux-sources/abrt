@@ -1,0 +1,27 @@
+From 37312509fc3f67faa3b2cd46afde85c1025e09c1 Mon Sep 17 00:00:00 2001
+From: Richard Marko <rmarko@redhat.com>
+Date: Fri, 10 May 2013 16:13:28 +0200
+Subject: [ABRT EL6 PATCH 189/197] abrt-python: don't build man page for python
+ api
+
+Not supported by sphinx < 1.0.
+---
+ abrt.spec.in                       | 1 -
+ src/python-problem/doc/Makefile.am | 4 ----
+ 2 files changed, 5 deletions(-)
+
+diff --git a/src/python-problem/doc/Makefile.am b/src/python-problem/doc/Makefile.am
+index 1a332de..f8fb527 100644
+--- a/src/python-problem/doc/Makefile.am
++++ b/src/python-problem/doc/Makefile.am
+@@ -161,7 +161,3 @@ EXTRA_DIST = \
+ 	api.rst \
+ 	properties.rst \
+ 	usage.rst
+-
+-man5_MANS = _build/man/abrt-python.5
+-
+-_build/man/abrt-python.5: problem-config man
+-- 
+1.8.2.1
+

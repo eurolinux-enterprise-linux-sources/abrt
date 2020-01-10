@@ -1,0 +1,31 @@
+From da9a95a08fa6f4d566101ebbe2bc457dfc4ea0f2 Mon Sep 17 00:00:00 2001
+From: Denys Vlasenko <vda.linux@googlemail.com>
+Date: Sun, 29 Jul 2012 22:19:29 +0200
+Subject: [PATCH 087/105] Make "abrt-ccpp status" tell user whether hook is
+ currently installed. Closes rhbz#820475
+
+Signed-off-by: Denys Vlasenko <vda.linux@googlemail.com>
+---
+ src/hooks/abrt-install-ccpp-hook | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/src/hooks/abrt-install-ccpp-hook b/src/hooks/abrt-install-ccpp-hook
+index cb0e016..470723b 100755
+--- a/src/hooks/abrt-install-ccpp-hook
++++ b/src/hooks/abrt-install-ccpp-hook
+@@ -73,10 +73,10 @@ status() {
+ 	cur_first=`printf "%s" "$cur" | sed 's/ .*//'`
+ 	# Is it already installed?
+ 	if test x"$cur_first" = x"|$HOOK_BIN"; then   # yes
+-		$verbose && printf "Installed\n"
++		printf "abrt-ccpp hook is installed\n"
+ 		return 0
+ 	else
+-		$verbose && printf "Not installed\n"
++		printf "abrt-ccpp hook is not installed\n"
+ 		return 1
+ 	fi
+ }
+-- 
+1.7.11.2
+

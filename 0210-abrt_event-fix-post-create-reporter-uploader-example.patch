@@ -1,0 +1,31 @@
+From 09e3bd8c8ca778684569344ec5bc5c36dd36f5a1 Mon Sep 17 00:00:00 2001
+From: Jakub Filak <jfilak@redhat.com>
+Date: Tue, 22 Jul 2014 13:57:09 +0200
+Subject: [ABRT PATCH 210/210] abrt_event: fix post-create reporter-uploader
+ examples (again)
+
+Fixes invalid commit 9a6fd0dbb754677dc8d746ea5df66986ade1e2ab
+
+Resolves: rhbz#888282
+
+Signed-off-by: Jakub Filak <jfilak@redhat.com>
+---
+ src/daemon/abrt_event.conf | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/daemon/abrt_event.conf b/src/daemon/abrt_event.conf
+index 2ba7854..e65ffa1 100644
+--- a/src/daemon/abrt_event.conf
++++ b/src/daemon/abrt_event.conf
+@@ -114,7 +114,7 @@ EVENT=post-create
+ # (this example shows how to upload the crash data on
+ #  a ABRT centralized crash collection client; man abrt-upload-watch)
+ #EVENT=post-create
+-     reporter-upload -u scp://user:password@server.name/var/spool/abrt-upload || :
++     reporter-upload -u scp://user:password@server.name/var/spool/abrt-upload/ || :
+ 
+ # Example:
+ # if you want to upload data immediately at the moment of a crash to
+-- 
+1.8.3.1
+

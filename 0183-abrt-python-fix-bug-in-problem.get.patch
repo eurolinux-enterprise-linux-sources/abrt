@@ -1,0 +1,26 @@
+From 1870b5bf2271ea3bf179b1b53453b6d0baa656a7 Mon Sep 17 00:00:00 2001
+From: Richard Marko <rmarko@redhat.com>
+Date: Tue, 7 May 2013 14:46:24 +0200
+Subject: [ABRT EL6 PATCH 183/197] abrt-python: fix bug in problem.get
+
+Signed-off-by: Richard Marko <rmarko@redhat.com>
+---
+ src/python-problem/problem/__init__.py | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/python-problem/problem/__init__.py b/src/python-problem/problem/__init__.py
+index 2a27bbe..a211c0b 100644
+--- a/src/python-problem/problem/__init__.py
++++ b/src/python-problem/problem/__init__.py
+@@ -271,7 +271,7 @@ def get(identifier, auth=False, __proxy=proxies.get_proxy()):
+ 
+     fun = __proxy.list
+     if auth:
+-        lst = __proxy.list_all
++        fun = __proxy.list_all
+ 
+     if identifier not in fun():
+         return None
+-- 
+1.8.2.1
+

@@ -1,0 +1,49 @@
+From 00132e6d8b6ea1eb83b72886ce92d05764ed0f39 Mon Sep 17 00:00:00 2001
+From: Denys Vlasenko <vda.linux@googlemail.com>
+Date: Thu, 16 Feb 2012 10:46:59 +0100
+Subject: [PATCH 001/105] correct check for enabled abrtd service
+
+/sbin/chkconfig SERVICE prints "enabled" only on systemd.
+On SysV-init, it prints nothing. This change makes our
+script to look at exit code instead: it is 0 if service
+is enabled; 1 otherwise.
+
+Signed-off-by: Denys Vlasenko <vda.linux@googlemail.com>
+---
+ abrt.spec.in | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/abrt.spec.in b/abrt.spec.in
+index f552687..631fef7 100644
+--- a/abrt.spec.in
++++ b/abrt.spec.in
+@@ -264,7 +264,7 @@ if [ $1 -eq 1 ]; then
+         /bin/systemctl enable abrt-ccpp.service >/dev/null 2>&1 || :
+     fi
+ %else
+-    if [ "`/sbin/chkconfig abrtd`" = "enabled" ]; then
++    if /sbin/chkconfig abrtd >/dev/null 2>&1; then
+         /sbin/chkconfig --add abrt-ccpp
+     fi
+ %endif
+@@ -279,7 +279,7 @@ if [ $1 -eq 1 ]; then
+         /bin/systemctl enable abrt-oops.service >/dev/null 2>&1 || :
+     fi
+ %else
+-    if [ "`/sbin/chkconfig abrtd`" = "enabled" ]; then
++    if /sbin/chkconfig abrtd >/dev/null 2>&1; then
+         /sbin/chkconfig --add abrt-oops
+     fi
+ %endif
+@@ -294,7 +294,7 @@ if [ $1 -eq 1 ]; then
+         /bin/systemctl enable abrt-vmcore.service >/dev/null 2>&1 || :
+     fi
+ %else
+-    if [ "`/sbin/chkconfig abrtd`" = "enabled" ]; then
++    if /sbin/chkconfig abrtd >/dev/null 2>&1; then
+         /sbin/chkconfig --add abrt-vmcore
+     fi
+ %endif
+-- 
+1.7.11.2
+

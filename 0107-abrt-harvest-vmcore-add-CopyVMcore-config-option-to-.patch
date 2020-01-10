@@ -1,0 +1,83 @@
+From f228de8d5967d819fd94a0161de1382b0af147a3 Mon Sep 17 00:00:00 2001
+From: Denys Vlasenko <vda.linux@googlemail.com>
+Date: Mon, 13 Aug 2012 12:49:50 +0200
+Subject: [PATCH 107/112] abrt-harvest-vmcore: add CopyVMcore config option to
+ copy vmcores. Closes rhbz#847227
+
+If /etc/abrt/abrt-harvest-vmcore.conf::CopyVMcore is "no" or "0", then
+we'll move vmcore.
+Otherwise, we'll copy it (that is, the original in /var/crash/DIR
+won't be removed).
+
+Signed-off-by: Denys Vlasenko <vda.linux@googlemail.com>
+---
+ src/hooks/Makefile.am              |  5 +++++
+ src/hooks/abrt-harvest-vmcore      | 10 +++++++++-
+ src/hooks/abrt-harvest-vmcore.conf |  8 ++++++++
+ 3 files changed, 22 insertions(+), 1 deletion(-)
+ create mode 100644 src/hooks/abrt-harvest-vmcore.conf
+
+diff --git a/src/hooks/Makefile.am b/src/hooks/Makefile.am
+index f232779..6f14073 100644
+--- a/src/hooks/Makefile.am
++++ b/src/hooks/Makefile.am
+@@ -1,3 +1,8 @@
++confdir = $(CONF_DIR)
++
++dist_conf_DATA = \
++    abrt-harvest-vmcore.conf
++
+ pluginsconfdir = $(PLUGINS_CONF_DIR)
+ 
+ dist_pluginsconf_DATA = \
+diff --git a/src/hooks/abrt-harvest-vmcore b/src/hooks/abrt-harvest-vmcore
+index bf3aa89..dbca8ca 100755
+--- a/src/hooks/abrt-harvest-vmcore
++++ b/src/hooks/abrt-harvest-vmcore
+@@ -21,12 +21,20 @@ sleep 1
+ 
+ umask 077
+ 
++CopyVMcore=`sed -n '/^CopyVMcore[ \t]*=/ s/.*=[ \t]*//p' /etc/abrt/abrt-harvest-vmcore.conf 2>/dev/null`
++
++move_core=false
++if test x"$CopyVMcore" = x"no" || test x"$CopyVMcore" = x"0"; then
++	move_core=true
++fi
++
+ for d in *; do
+ 	test -d "$d" || continue
+ 	test -f "$d/vmcore" || continue
+ 
+ 	# Let abrtd know what type of problem it is:
+ 	printf 'vmcore' >"$d/analyzer"
++	printf 'vmcore' >"$d/type"
+ 	printf 'kernel' >"$d/component"
+ 	printf '%s' "`date '+%s'`" >"$d/time"
+ 	printf '0' >"$d/uid"
+@@ -47,7 +55,7 @@ for d in *; do
+ 		rm -rf "/var/spool/abrt/vmcore-$d.new"
+ 		continue
+ 	}
+-	rm -rf -- "$d"
++	$move_core && rm -rf -- "$d"
+ 
+ 	chown -R 0:0 "/var/spool/abrt/vmcore-$d.new"
+ 	chmod -R u+rwX,go-rwxst "/var/spool/abrt/vmcore-$d.new"
+diff --git a/src/hooks/abrt-harvest-vmcore.conf b/src/hooks/abrt-harvest-vmcore.conf
+new file mode 100644
+index 0000000..d2d5413
+--- /dev/null
++++ b/src/hooks/abrt-harvest-vmcore.conf
+@@ -0,0 +1,8 @@
++# Do you want vmcore to be copied, or moved from /var/crash to /var/spool/abrt?
++# (default is to copy, but it may duplicate way too much data)
++CopyVMcore = yes
++
++#Not implemented yet. TODO?
++# If you selected copying above, consider setting this to 'yes'
++# to save on disk space (default: no)
++#AttemptHardlink = yes
+-- 
+1.7.11.4
+

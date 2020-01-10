@@ -1,0 +1,342 @@
+From 84cd1b9696f7967d85a8fcbd1c2b1d0a58a4bbd5 Mon Sep 17 00:00:00 2001
+From: Nikola Pajkovsky <npajkovs@redhat.com>
+Date: Mon, 27 Feb 2012 14:56:56 +0100
+Subject: [PATCH 029/105] koops-unit-test: rhbz#789526 write unit test for
+ improving hash calculation
+
+Signed-off-by: Nikola Pajkovsky <npajkovs@redhat.com>
+---
+ examples/hash-gen-same-as-oops6.right  | 29 +++++++++++
+ src/include/libabrt.h                  |  3 +-
+ src/lib/kernel.c                       | 90 +++++++++++++++++++++++++++++++++
+ src/plugins/Makefile.am                |  3 +-
+ src/plugins/abrt-action-analyze-oops.c | 91 +---------------------------------
+ tests/koops-parser.at                  | 40 +++++++++++++++
+ 7 files changed, 164 insertions(+), 121 deletions(-)
+ delete mode 100644 examples/hash-gen-same-as-oop6.right
+ create mode 100644 examples/hash-gen-same-as-oops6.right
+
+diff --git a/examples/hash-gen-same-as-oops6.right b/examples/hash-gen-same-as-oops6.right
+new file mode 100644
+index 0000000..c22a6aa
+--- /dev/null
++++ b/examples/hash-gen-same-as-oops6.right
+@@ -0,0 +1,29 @@
++WARNING: at drivers/misc/lis3lv02d/lis3lv02d.c:213 lis3lv02d_get_pwron_wait+0x8f/0xa0 [lis3lv02d]()
++Hardware name: HP Pavilion dv7 Notebook PC
++device returned spurious data
++Modules linked in: mac80211 brcmutil cfg80211 crc8 cordic hp_wmi(+) sparse_keymap rfkill uvcvideo videodev hid_logitech_dj media v4l2_compat_ioctl32 joydev snd_hda_codec_idt microcode snd_hda_codec_hdmi snd_hda_intel snd_hda_codec snd_hwdep snd_seq snd_seq_device i2c_piix4 k10temp r8169 bcma mii snd_pcm snd_timer snd soundcore snd_page_alloc hp_accel(+) lis3lv02d input_polldev virtio_net kvm_amd kvm uinput sunrpc pata_acpi ata_generic usb_storage pata_atiixp sdhci_pci sdhci mmc_core wmi video radeon ttm drm_kms_helper drm i2c_algo_bit i2c_core
++Pid: 547, comm: modprobe Not tainted 3.2.3-2.fc16.x86_64 #1
++Call Trace:
++ [<ffffffff8106dd4f>] warn_slowpath_common+0x7f/0xc0
++ [<ffffffff8106de46>] warn_slowpath_fmt+0x46/0x50
++ [<ffffffff81329a58>] ? acpi_evaluate_object+0x1e2/0x1f4
++ [<ffffffffa024c6ef>] lis3lv02d_get_pwron_wait+0x8f/0xa0 [lis3lv02d]
++ [<ffffffffa024cbe7>] lis3lv02d_poweron+0x57/0xc0 [lis3lv02d]
++ [<ffffffffa024d5af>] lis3lv02d_init_device+0x16f/0xbc0 [lis3lv02d]
++ [<ffffffffa025533d>] lis3lv02d_add+0xdd/0x1d0 [hp_accel]
++ [<ffffffff81313492>] acpi_device_probe+0x4e/0x11c
++ [<ffffffff813932cc>] driver_probe_device+0x9c/0x300
++ [<ffffffff813935db>] __driver_attach+0xab/0xb0
++ [<ffffffff81393530>] ? driver_probe_device+0x300/0x300
++ [<ffffffff81393530>] ? driver_probe_device+0x300/0x300
++ [<ffffffff8139214c>] bus_for_each_dev+0x5c/0x90
++ [<ffffffff81392ede>] driver_attach+0x1e/0x20
++ [<ffffffff81392ae0>] bus_add_driver+0x1b0/0x2a0
++ [<ffffffffa025d000>] ? 0xffffffffa025cfff
++ [<ffffffff81393b36>] driver_register+0x76/0x140
++ [<ffffffffa025d000>] ? 0xffffffffa025cfff
++ [<ffffffff81313cfb>] acpi_bus_register_driver+0x43/0x45
++ [<ffffffffa025d01e>] lis3lv02d_init_module+0x1e/0x1000 [hp_accel]
++ [<ffffffff81002042>] do_one_initcall+0x42/0x180
++ [<ffffffff810ac970>] sys_init_module+0xc0/0x230
++ [<ffffffff815e9782>] system_call_fastpath+0x16/0x1b
+diff --git a/src/include/libabrt.h b/src/include/libabrt.h
+index 3dfaad4..c7d2bae 100644
+--- a/src/include/libabrt.h
++++ b/src/include/libabrt.h
+@@ -69,7 +69,8 @@ int daemon_is_ok();
+ char *koops_extract_version(const char *line);
+ #define kernel_tainted_short abrt_kernel_tainted_short
+ char *kernel_tainted_short(const char *kernel_bt);
+-
++#define koops_hash_str abrt_koops_hash_str
++void koops_hash_str(char hash_str[SHA1_RESULT_LEN*2 + 1], char *oops_buf, const char *oops_ptr);
+ 
+ #ifdef __cplusplus
+ }
+diff --git a/src/lib/kernel.c b/src/lib/kernel.c
+index f97572c..25fab21 100644
+--- a/src/lib/kernel.c
++++ b/src/lib/kernel.c
+@@ -19,6 +19,96 @@
+ 
+ #include "libabrt.h"
+ 
++void koops_hash_str(char hash_str[SHA1_RESULT_LEN*2 + 1], char *oops_buf, const char *oops_ptr)
++{
++    // Example of call trace part of oops:
++    // Call Trace:
++    // [<f88e11c7>] ? radeon_cp_resume+0x7d/0xbc [radeon]
++    // [<f88745f8>] ? drm_ioctl+0x1b0/0x225 [drm]
++    // [<f88e114a>] ? radeon_cp_resume+0x0/0xbc [radeon]
++    // [<c049b1c0>] ? vfs_ioctl+0x50/0x69
++    // [<c049b414>] ? do_vfs_ioctl+0x23b/0x247
++    // [<c0460a56>] ? audit_syscall_entry+0xf9/0x123
++    // [<c049b460>] ? sys_ioctl+0x40/0x5c
++    // [<c0403c76>] ? syscall_call+0x7/0xb
++    struct strbuf *kernel_bt = strbuf_new();
++    char *call_trace = strstr(oops_buf, "Call Trace");
++    if (call_trace)
++    {
++        call_trace += sizeof("Call Trace\n");
++        char *end_line = strchr(call_trace, '\n');
++        int i = 0;
++        while (end_line && !*end_line)
++        {
++            char *line = xstrndup(call_trace, end_line - call_trace);
++
++            char *p = skip_whitespace(line);
++            char *end_mem_block = strchr(p, ' ');
++            if (!end_mem_block)
++                error_msg_and_die("no [<mem>] mark");
++
++            end_mem_block = skip_whitespace(end_mem_block);
++
++            char *begin_off_len, *function;
++
++            /* skip symbols prefixed with ? */
++            if (end_mem_block && *end_mem_block == '?')
++            {
++                free(line);
++                goto skip_line;
++            }
++            /* strip out offset +off/len */
++            begin_off_len = strchr(end_mem_block, '+');
++            if (!begin_off_len)
++                error_msg_and_die("'%s'\nno +offset/len at the end of bt", end_mem_block);
++
++            function = xstrndup(end_mem_block, begin_off_len - end_mem_block);
++            strbuf_append_strf(kernel_bt, "%s\n", function);
++            free(line);
++            free(function);
++            if (i == 5)
++                break;
++
++            ++i;
++        skip_line:
++            call_trace += end_line - call_trace + 1;
++            end_line = strchr(call_trace, '\n');
++            if (end_line)
++                ++end_line; /* skip \n */
++        }
++        goto gen_hash;
++    }
++
++    /* Special-case: if the first line is of form:
++     * WARNING: at net/wireless/core.c:614 wdev_cleanup_work+0xe9/0x120 [cfg80211]() (Not tainted)
++     * then hash only "file:line func+ofs/len" part.
++     */
++    if (strncmp(oops_ptr, "WARNING: at ", sizeof("WARNING: at ")-1) == 0)
++    {
++        const char *p = oops_ptr + sizeof("WARNING: at ")-1;
++        p = strchr(p, ' '); /* skip filename:NNN */
++        if (p)
++        {
++            p = strchrnul(p + 1, ' '); /* skip function_name+0xNN/0xNNN */
++            oops_ptr += sizeof("WARNING: at ")-1;
++            while (oops_ptr < p)
++                strbuf_append_char(kernel_bt, *oops_ptr++);
++        }
++    }
++
++gen_hash: ;
++
++    char hash_bytes[SHA1_RESULT_LEN];
++    sha1_ctx_t sha1ctx;
++    sha1_begin(&sha1ctx);
++    sha1_hash(&sha1ctx, kernel_bt->buf, kernel_bt->len);
++    sha1_end(&sha1ctx, hash_bytes);
++    strbuf_free(kernel_bt);
++
++    bin2hex(hash_str, hash_bytes, SHA1_RESULT_LEN)[0] = '\0';
++    VERB3 log("hash: %s", hash_str);
++}
++
+ char *koops_extract_version(const char *linepointer)
+ {
+     if (strstr(linepointer, "Pid")
+diff --git a/src/plugins/Makefile.am b/src/plugins/Makefile.am
+index 5edbd3e..e922f61 100644
+--- a/src/plugins/Makefile.am
++++ b/src/plugins/Makefile.am
+@@ -119,7 +119,8 @@ abrt_action_analyze_oops_CPPFLAGS = \
+     -D_GNU_SOURCE \
+     -Wall -Wwrite-strings -Werror
+ abrt_action_analyze_oops_LDADD = \
+-    $(LIBREPORT_LIBS)
++    $(LIBREPORT_LIBS) \
++    ../lib/libabrt.la
+ 
+ abrt_action_trim_files_SOURCES = \
+     abrt-action-trim-files.c
+diff --git a/src/plugins/abrt-action-analyze-oops.c b/src/plugins/abrt-action-analyze-oops.c
+index f7d223b..3eb0a61 100644
+--- a/src/plugins/abrt-action-analyze-oops.c
++++ b/src/plugins/abrt-action-analyze-oops.c
+@@ -18,95 +18,6 @@
+ */
+ #include "libabrt.h"
+ 
+-static void hash_oops_str(char hash_str[SHA1_RESULT_LEN*2 + 1], char *oops_buf, const char *oops_ptr)
+-{
+-    // Example of call trace part of oops:
+-    // Call Trace:
+-    // [<f88e11c7>] ? radeon_cp_resume+0x7d/0xbc [radeon]
+-    // [<f88745f8>] ? drm_ioctl+0x1b0/0x225 [drm]
+-    // [<f88e114a>] ? radeon_cp_resume+0x0/0xbc [radeon]
+-    // [<c049b1c0>] ? vfs_ioctl+0x50/0x69
+-    // [<c049b414>] ? do_vfs_ioctl+0x23b/0x247
+-    // [<c0460a56>] ? audit_syscall_entry+0xf9/0x123
+-    // [<c049b460>] ? sys_ioctl+0x40/0x5c
+-    // [<c0403c76>] ? syscall_call+0x7/0xb
+-    struct strbuf *kernel_bt = strbuf_new();
+-    char *call_trace = strstr(oops_buf, "Call Trace");
+-    if (call_trace)
+-    {
+-        call_trace += sizeof("Call Trace\n");
+-        char *end_line = strchr(call_trace, '\n');
+-        int i = 0;
+-        while (end_line && !*end_line)
+-        {
+-            char *line = xstrndup(call_trace, end_line - call_trace);
+-
+-            char *p = skip_whitespace(line);
+-            char *end_mem_block = strchr(p, ' ');
+-            if (!end_mem_block)
+-                error_msg_and_die("no [<mem>] mark");
+-
+-            end_mem_block = skip_whitespace(end_mem_block);
+-
+-            char *begin_off_len, *function;
+-
+-            /* skip symbols prefixed with ? */
+-            if (end_mem_block && *end_mem_block == '?')
+-            {
+-                free(line);
+-                goto skip_line;
+-            }
+-            /* strip out offset +off/len */
+-            begin_off_len = strchr(end_mem_block, '+');
+-            if (!begin_off_len)
+-                error_msg_and_die("'%s'\nno +offset/len at the end of bt", end_mem_block);
+-
+-            function = xstrndup(end_mem_block, begin_off_len - end_mem_block);
+-            strbuf_append_strf(kernel_bt, "%s\n", function);
+-            free(line);
+-            free(function);
+-            if (i == 5)
+-                break;
+-
+-            ++i;
+-        skip_line:
+-            call_trace += end_line - call_trace + 1;
+-            end_line = strchr(call_trace, '\n');
+-            if (end_line)
+-                ++end_line; /* skip \n */
+-        }
+-        goto gen_hash;
+-    }
+-
+-    /* Special-case: if the first line is of form:
+-     * WARNING: at net/wireless/core.c:614 wdev_cleanup_work+0xe9/0x120 [cfg80211]() (Not tainted)
+-     * then hash only "file:line func+ofs/len" part.
+-     */
+-    if (strncmp(oops_ptr, "WARNING: at ", sizeof("WARNING: at ")-1) == 0)
+-    {
+-        const char *p = oops_ptr + sizeof("WARNING: at ")-1;
+-        p = strchr(p, ' '); /* skip filename:NNN */
+-        if (p)
+-        {
+-            p = strchrnul(p + 1, ' '); /* skip function_name+0xNN/0xNNN */
+-            oops_ptr += sizeof("WARNING: at ")-1;
+-            while (oops_ptr < p)
+-                strbuf_append_char(kernel_bt, *oops_ptr++);
+-        }
+-    }
+-
+-gen_hash: ;
+-
+-    char hash_bytes[SHA1_RESULT_LEN];
+-    sha1_ctx_t sha1ctx;
+-    sha1_begin(&sha1ctx);
+-    sha1_hash(&sha1ctx, kernel_bt->buf, kernel_bt->len);
+-    sha1_end(&sha1ctx, hash_bytes);
+-    strbuf_free(kernel_bt);
+-
+-    bin2hex(hash_str, hash_bytes, SHA1_RESULT_LEN)[0] = '\0';
+-    VERB3 log("hash: %s", hash_str);
+-}
+ 
+ int main(int argc, char **argv)
+ {
+@@ -147,7 +58,7 @@ int main(int argc, char **argv)
+ 
+     char *oops = dd_load_text(dd, FILENAME_BACKTRACE);
+     char hash_str[SHA1_RESULT_LEN*2 + 1];
+-    hash_oops_str(hash_str, oops, oops);
++    koops_hash_str(hash_str, oops, oops);
+     free(oops);
+ 
+     dd_save_text(dd, FILENAME_UUID, hash_str);
+diff --git a/tests/koops-parser.at b/tests/koops-parser.at
+index d2c1e6d..f6b2f63 100644
+--- a/tests/koops-parser.at
++++ b/tests/koops-parser.at
+@@ -108,3 +108,43 @@ int main(void)
+ 	return ret;
+ }
+ ]])
++
++AT_TESTFUN([koops_hash_improve],
++[[
++#include "libabrt.h"
++#include "koops-test.h"
++
++int run_test(const struct test_struct *test)
++{
++	char *oops1 = fread_full(test->filename);
++	char *oops2 = fread_full(test->expected_results);
++
++	char hash_oops1[SHA1_RESULT_LEN*2 + 1];
++	koops_hash_str(hash_oops1, oops1, oops1);
++
++	char hash_oops2[SHA1_RESULT_LEN*2 + 1];
++	koops_hash_str(hash_oops2, oops2, oops2);
++
++	if (!strcmp(hash_oops1, hash_oops2))
++		return 0;
++
++	log("'%s' != '%s'", hash_oops1, hash_oops2);
++
++	return 1;
++}
++
++int main(void)
++{
++	struct test_struct all_same_hashes[] = {
++		{ EXAMPLE_PFX"/oops4.right", EXAMPLE_PFX"/oops-same-as-oops4.right" },
++		{ EXAMPLE_PFX"/hash-gen-oops6.right", EXAMPLE_PFX"/hash-gen-same-as-oops6.right" },
++	};
++
++	int ret = 0;
++	for (int i = 0; i < ARRAY_SIZE(all_same_hashes); ++i)
++		ret |= run_test(&all_same_hashes[i]);
++
++	return ret;
++}
++
++]])
+-- 
+1.7.11.2
+

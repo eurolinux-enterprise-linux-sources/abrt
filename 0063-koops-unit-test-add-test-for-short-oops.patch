@@ -1,0 +1,38 @@
+From e5bd1f394a1ba4ad550a44d486e16e8676d4f773 Mon Sep 17 00:00:00 2001
+From: Nikola Pajkovsky <npajkovs@redhat.com>
+Date: Wed, 14 Mar 2012 12:27:38 +0100
+Subject: [PATCH 063/105] koops-unit-test: add test for short oops
+
+Signed-off-by: Nikola Pajkovsky <npajkovs@redhat.com>
+---
+ Makefile.am           | 1 +
+ tests/koops-parser.at | 1 +
+ 2 files changed, 2 insertions(+)
+
+diff --git a/Makefile.am b/Makefile.am
+index ffd8b1a..32a46aa 100644
+--- a/Makefile.am
++++ b/Makefile.am
+@@ -14,6 +14,7 @@ TESTSUITE_FILES += examples/oops-same-as-oops4.right
+ TESTSUITE_FILES += examples/oops4.right
+ TESTSUITE_FILES += examples/oops-same-as-oops4.right
+ TESTSUITE_FILES += examples/hash-gen-oops6.right
++TESTSUITE_FILES += examples/hash-gen-short-oops.right
+ TESTSUITE_FILES += examples/hash-gen-same-as-oops6.right
+ TESTSUITE_FILES += examples/oops-with-jiffies.test
+ TESTSUITE_FILES += examples/oops-with-jiffies.right
+diff --git a/tests/koops-parser.at b/tests/koops-parser.at
+index 493098b..0096368 100644
+--- a/tests/koops-parser.at
++++ b/tests/koops-parser.at
+@@ -138,6 +138,7 @@ int main(void)
+ 	struct test_struct all_same_hashes[] = {
+ 		{ EXAMPLE_PFX"/oops4.right", EXAMPLE_PFX"/oops-same-as-oops4.right" },
+ 		{ EXAMPLE_PFX"/hash-gen-oops6.right", EXAMPLE_PFX"/hash-gen-same-as-oops6.right" },
++		{ EXAMPLE_PFX"/hash-gen-short-oops.right", EXAMPLE_PFX"/hash-gen-short-oops.right" },
+ 	};
+ 
+ 	int ret = 0;
+-- 
+1.7.11.2
+

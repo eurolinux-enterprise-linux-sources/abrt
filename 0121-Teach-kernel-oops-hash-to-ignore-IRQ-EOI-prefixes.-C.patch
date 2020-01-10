@@ -1,0 +1,60 @@
+From d1c48041e97ff1c91636cf2a961898e4ddf80121 Mon Sep 17 00:00:00 2001
+From: Denys Vlasenko <vda.linux@googlemail.com>
+Date: Thu, 13 Dec 2012 17:36:16 +0100
+Subject: [ABRT EL6 PATCH 121/200] Teach kernel oops hash to ignore "<IRQ>" /
+ "<EOI>" prefixes. Closes rhbz#876605
+
+This is the backported commit 559ab9535ef4caf4f9bc22c4b6ab332042ced462
+
+Signed-off-by: Denys Vlasenko <vda.linux@googlemail.com>
+---
+ src/lib/kernel.c | 33 ++++++++++++++++++++++++++++++++-
+ 1 file changed, 32 insertions(+), 1 deletion(-)
+
+diff --git a/src/lib/kernel.c b/src/lib/kernel.c
+index 2d22ab5..b95bbe4 100644
+--- a/src/lib/kernel.c
++++ b/src/lib/kernel.c
+@@ -399,7 +399,38 @@ int koops_hash_str(char hash_str[SHA1_RESULT_LEN*2 + 1], const char *oops_buf)
+                 break;
+             char *line = xstrndup(call_trace, end_line - call_trace);
+ 
+-            char *p = skip_whitespace(line);
++            /* Skip whitespace and "<IRQ>" / "<EOI>" markers */
++            char *p = line;
++            for (;;)
++            {
++                p = skip_whitespace(p);
++                if (prefixcmp(p, "<IRQ>") == 0)
++                {
++                    p += strlen("<IRQ>");
++                    continue;
++                }
++                if (prefixcmp(p, "<EOI>") == 0)
++                {
++                    p += strlen("<EOI>");
++                    continue;
++                }
++                /* Didn't see it in practice,
++                 * but code inspection in arch/x86/kernel/dumpstack_64.c
++                 * tells me these strings can be there as well:
++                 */
++                if (prefixcmp(p, "<EOE>") == 0)
++                {
++                    p += strlen("<EOE>");
++                    continue;
++                }
++                if (prefixcmp(p, "<<EOE>>") == 0)
++                {
++                    p += strlen("<<EOE>>");
++                    continue;
++                }
++                break;
++            }
++
+             char *end_mem_block = strchr(p, ' ');
+             if (!end_mem_block)
+                 goto done; /* no memblock, we are done */
+-- 
+1.8.3.1
+

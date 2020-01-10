@@ -1,0 +1,27 @@
+From 3b815d5652ae2cdaa93ce97a749db61815e080b1 Mon Sep 17 00:00:00 2001
+From: Denys Vlasenko <vda.linux@googlemail.com>
+Date: Tue, 14 Aug 2012 12:01:45 +0200
+Subject: [PATCH 110/112] abrt-install-ccpp-hook: fix the check for %e
+ presense. Closes rhbz#832085
+
+Signed-off-by: Denys Vlasenko <vda.linux@googlemail.com>
+---
+ src/hooks/abrt-install-ccpp-hook | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/hooks/abrt-install-ccpp-hook b/src/hooks/abrt-install-ccpp-hook
+index 470723b..6cdf118 100755
+--- a/src/hooks/abrt-install-ccpp-hook
++++ b/src/hooks/abrt-install-ccpp-hook
+@@ -35,7 +35,7 @@ start() {
+ 	cur_first=`printf "%s" "$cur" | sed 's/ .*//'`
+ 
+ 	# Is there a %e (executable name) in old pattern anywhere?
+-	if test x"${cur#.*%e}" = x"${cur}"; then
++	if test x"${cur#*%e}" = x"${cur}"; then
+ 		# No. Can use PATTERN with less risk of overflow
+ 		# on expansion (executable names can be LONG).
+ 		# Overflow would cause kernel to abort coredump. BAD.
+-- 
+1.7.11.4
+

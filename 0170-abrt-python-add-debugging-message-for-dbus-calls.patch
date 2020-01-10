@@ -1,0 +1,25 @@
+From 228df1d209ea03310b77801e9882af793302bf5c Mon Sep 17 00:00:00 2001
+From: Richard Marko <rmarko@redhat.com>
+Date: Wed, 12 Dec 2012 14:37:53 +0100
+Subject: [ABRT EL6 PATCH 170/197] abrt-python: add debugging message for dbus
+ calls
+
+---
+ src/python-problem/problem/proxies.py | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/src/python-problem/problem/proxies.py b/src/python-problem/problem/proxies.py
+index 92281bb..e3dea9c 100644
+--- a/src/python-problem/problem/proxies.py
++++ b/src/python-problem/problem/proxies.py
+@@ -42,6 +42,7 @@ class DBusProxy(object):
+ 
+     def _dbus_call(self, fun_name, *args):
+         try:
++            logging.debug('Calling {0} with {1}'.format(fun_name, args))
+             return getattr(self._iface, fun_name)(*args)
+         except self.dbus.exceptions.DBusException as e:
+             dbname = e.get_dbus_name()
+-- 
+1.8.2.1
+

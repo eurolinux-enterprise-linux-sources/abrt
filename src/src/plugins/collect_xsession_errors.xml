@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<event>
+    <name>Collect .xsession-errors</name>
+    <description>Save relevant lines from ~/.xsession-errors file</description>
+    <description xml:lang="es">Guardar las líneas relevantes del archivo  ~/.xsession-errors</description>
+    <description xml:lang="ru">Извлечение значимых строк из файла ~/.xsession-errors</description>
+    <long-description>Scans through ~/.xsession-errors file and saves those lines which contain executable's name. The result is saved as 'xsession_errors' element.</long-description>
+    <long-description xml:lang="es">Examina el archivo ~/.xsession-errors y guarda aquellas líneas que pudieran contener el nombre del ejecutable. El resultado se guarda como el elemento 'xsession_errors'.</long-description>
+    <creates-items>xsession_errors</creates-items>
+</event>

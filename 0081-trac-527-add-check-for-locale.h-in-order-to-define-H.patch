@@ -1,0 +1,28 @@
+From 71d1611d5e7c61c02a546c7a355b93e4a145641c Mon Sep 17 00:00:00 2001
+From: Jakub Filak <jfilak@redhat.com>
+Date: Fri, 25 May 2012 17:57:11 +0200
+Subject: [PATCH 081/105] trac#527 : add check for locale.h in order to define
+ HAVE_LOCALE_H by the configure script
+
+Acked-by: Nikola Pajkovsky <npajkovs@redhat.com>
+Signed-off-by: Jakub Filak <jfilak@redhat.com>
+---
+ configure.ac | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/configure.ac b/configure.ac
+index 4391239..6241ab0 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -94,6 +94,8 @@ AM_CONDITIONAL(HAVE_SYSTEMD, [test -n "$with_systemdsystemunitdir"])
+ AC_CHECK_HEADER([sys/inotify.h], [],
+    [AC_MSG_ERROR([sys/inotify.h is needed to build abrt])])
+ 
++AC_CHECK_HEADERS([locale.h])
++
+ CONF_DIR='${sysconfdir}/${PACKAGE_NAME}'
+ VAR_RUN='${localstatedir}/run'
+ PLUGINS_CONF_DIR='${sysconfdir}/${PACKAGE_NAME}/plugins'
+-- 
+1.7.11.2
+

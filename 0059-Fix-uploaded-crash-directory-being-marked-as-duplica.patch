@@ -1,0 +1,39 @@
+From 261d4014b09f04a965bf1f62666a7e90778de48e Mon Sep 17 00:00:00 2001
+From: Richard Marko <rmarko@redhat.com>
+Date: Wed, 7 Mar 2012 16:12:10 +0100
+Subject: [PATCH 059/105] Fix uploaded crash directory being marked as
+ duplicate
+
+Fixes rhbz#800828, trac#476
+---
+ src/daemon/abrtd.c | 14 ++++++++++----
+ 1 file changed, 10 insertions(+), 4 deletions(-)
+
+diff --git a/src/daemon/abrtd.c b/src/daemon/abrtd.c
+index 3189b5c..b664d54 100644
+--- a/src/daemon/abrtd.c
++++ b/src/daemon/abrtd.c
+@@ -353,10 +353,16 @@ static mw_result_t run_post_create_and_load_data(const char *dump_dir_name, prob
+     /* Update count */
+     char *count_str = dd_load_text_ext(dd, FILENAME_COUNT, DD_FAIL_QUIETLY_ENOENT);
+     unsigned long count = strtoul(count_str, NULL, 10);
+-    count++;
+-    char new_count_str[sizeof(long)*3 + 2];
+-    sprintf(new_count_str, "%lu", count);
+-    dd_save_text(dd, FILENAME_COUNT, new_count_str);
++
++    /* Don't increase crash count if we are working with newly uploaded
++     * directory (remote crash) which already has it's crash count set.
++     */
++    if((status != 0 && dup_of_dir) || count == 0) {
++        count++;
++        char new_count_str[sizeof(long)*3 + 2];
++        sprintf(new_count_str, "%lu", count);
++        dd_save_text(dd, FILENAME_COUNT, new_count_str);
++    }
+     dd_close(dd);
+ 
+     *problem_data = load_problem_data(dump_dir_name);
+-- 
+1.7.11.2
+

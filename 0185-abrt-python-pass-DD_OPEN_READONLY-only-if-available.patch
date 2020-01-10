@@ -1,0 +1,38 @@
+From 6a9da5fd8f1211ff6b9e272d751d49d0b70545d2 Mon Sep 17 00:00:00 2001
+From: Richard Marko <rmarko@fedoraproject.org>
+Date: Thu, 9 May 2013 14:15:38 +0200
+Subject: [ABRT EL6 PATCH 185/197] abrt-python: pass DD_OPEN_READONLY only if
+ available
+
+Signed-off-by: Richard Marko <rmarko@fedoraproject.org>
+---
+ src/python-problem/problem/proxies.py | 10 ++++++----
+ 1 file changed, 6 insertions(+), 4 deletions(-)
+
+diff --git a/src/python-problem/problem/proxies.py b/src/python-problem/problem/proxies.py
+index d4b3cfa..c547161 100644
+--- a/src/python-problem/problem/proxies.py
++++ b/src/python-problem/problem/proxies.py
+@@ -155,13 +155,15 @@ class FsProxy(object):
+     def get_item(self, dump_dir, name):
+         ddir = self._open_ddir(dump_dir)
+ 
+-        val = ddir.load_text(
+-            name,
+-            report.DD_OPEN_READONLY |
+-            report.DD_FAIL_QUIETLY_EACCES |
++        flags = (report.DD_FAIL_QUIETLY_EACCES |
+             report.DD_FAIL_QUIETLY_ENOENT |
+             report.DD_LOAD_TEXT_RETURN_NULL_ON_FAILURE)
+ 
++        if hasattr(report, 'DD_OPEN_READONLY'):
++            flags |= report.DD_OPEN_READONLY
++
++        val = ddir.load_text(name, flags)
++
+         ddir.close()
+         return val
+ 
+-- 
+1.8.2.1
+

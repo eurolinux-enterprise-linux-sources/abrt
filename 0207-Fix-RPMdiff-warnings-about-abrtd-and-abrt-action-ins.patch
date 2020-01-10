@@ -1,0 +1,89 @@
+From 0aecbabd336b39bf61a95dde4e5503aeafd6efa5 Mon Sep 17 00:00:00 2001
+From: Jakub Filak <jfilak@redhat.com>
+Date: Wed, 18 Jun 2014 16:21:06 +0200
+Subject: [ABRT PATCH 207/207] Fix RPMdiff warnings about abrtd and
+ abrt-action-install-debuginfo-to-abrt-cache
+
+Warnings were:
+Daemon executable compiled with only partial RELRO.
+Setuid executable compiled with only partial RELRO.
+
+How to check for full relro:
+readelf -l PROG should show GNU_RELRO section.
+readelf -d PROG should show BIND_NOW entry in dynsection.
+
+Related to rhbz#881123
+
+Signed-off-by: Denys Vlasenko <dvlasenk@redhat.com>
+Signed-off-by: Jakub Filak <jfilak@redhat.com>
+
+Resolves: rhbz#812284
+---
+ src/daemon/Makefile.am  |  8 ++++++--
+ src/plugins/Makefile.am | 14 +++++++++-----
+ 2 files changed, 15 insertions(+), 7 deletions(-)
+
+diff --git a/src/daemon/Makefile.am b/src/daemon/Makefile.am
+index 8811fe3..d79ffc2 100644
+--- a/src/daemon/Makefile.am
++++ b/src/daemon/Makefile.am
+@@ -16,6 +16,8 @@ sbin_PROGRAMS = \
+ 
+ libexec_PROGRAMS = abrt-handle-event
+ 
++# This is a daemon, building with full relro and PIE
++# for increased security.
+ abrtd_SOURCES = \
+     abrtd.c
+ abrtd_CPPFLAGS = \
+@@ -27,11 +29,13 @@ abrtd_CPPFLAGS = \
+     -D_GNU_SOURCE \
+     -Wall -Wwrite-strings \
+     -Werror \
+-    -fPIE \
+-    -Wl,-z,relro -Wl,-z,now
++    -fPIE
+ abrtd_LDADD = \
+     ../lib/libabrt.la \
+     $(LIBREPORT_LIBS)
++abrtd_LDFLAGS = \
++    -Wl,-z,relro -Wl,-z,now \
++    -pie
+ 
+ abrt_server_SOURCES = \
+     abrt-server.c
+diff --git a/src/plugins/Makefile.am b/src/plugins/Makefile.am
+index f6d6c28..b76a1bb 100644
+--- a/src/plugins/Makefile.am
++++ b/src/plugins/Makefile.am
+@@ -182,6 +182,8 @@ abrt_action_analyze_backtrace_LDADD = \
+     $(LIBREPORT_LIBS) \
+     $(BTPARSER_LIBS)
+ 
++# SUID application, building with full relro and PIE
++# for increased security.
+ abrt_action_install_debuginfo_to_abrt_cache_SOURCES = \
+     abrt-action-install-debuginfo-to-abrt-cache.c
+ abrt_action_install_debuginfo_to_abrt_cache_CPPFLAGS = \
+@@ -190,11 +192,13 @@ abrt_action_install_debuginfo_to_abrt_cache_CPPFLAGS = \
+     -D_GNU_SOURCE \
+     $(LIBREPORT_CFLAGS) \
+     -Wall -Wwrite-strings \
+-    -fPIE \
+-    -Wl,-z,relro -Wl,-z,now
+-abrt_action_install_debuginfo_to_abrt_cache_LDADD = \
+-     $(LIBREPORT_LIBS) \
+-     ../lib/libabrt.la
++    -fPIE
++ abrt_action_install_debuginfo_to_abrt_cache_LDADD = \
++    $(LIBREPORT_LIBS) \
++    ../lib/libabrt.la
++ abrt_action_install_debuginfo_to_abrt_cache_LDFLAGS = \
++    -Wl,-z,relro -Wl,-z,now \
++    -pie
+ 
+ abrt_dedup_client_SOURCES = \
+     abrt-dedup-client.c \
+-- 
+1.8.3.1
+

@@ -1,0 +1,33 @@
+From b99caaa141b3dc87705ce432082c8c966cea58e7 Mon Sep 17 00:00:00 2001
+From: Richard Marko <rmarko@fedoraproject.org>
+Date: Thu, 9 May 2013 14:18:05 +0200
+Subject: [ABRT EL6 PATCH 187/197] abrt-python: check if gid equals current
+ users gid
+
+Required for old dump directory style where ownership
+is stored in gid instead of uid.
+
+Signed-off-by: Richard Marko <rmarko@fedoraproject.org>
+---
+ src/python-problem/problem/proxies.py | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/src/python-problem/problem/proxies.py b/src/python-problem/problem/proxies.py
+index c547161..1bd89a4 100644
+--- a/src/python-problem/problem/proxies.py
++++ b/src/python-problem/problem/proxies.py
+@@ -193,7 +193,10 @@ class FsProxy(object):
+                 continue
+ 
+             uid = os.getuid()
+-            if not _all and os.stat(dump_dir).st_uid != uid:
++            gid = os.getuid()
++            dir_stat = os.stat(dump_dir)
++            if not _all and (dir_stat.st_uid != uid and
++                             dir_stat.st_gid != gid):
+                 continue
+ 
+             ddir = report.dd_opendir(dump_dir)
+-- 
+1.8.2.1
+

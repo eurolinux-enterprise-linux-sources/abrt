@@ -1,0 +1,41 @@
+From b32e5df5fd3fdc66f376d084b46399219e8cf434 Mon Sep 17 00:00:00 2001
+From: Denys Vlasenko <dvlasenk@redhat.com>
+Date: Wed, 6 Mar 2013 13:49:30 +0100
+Subject: [ABRT EL6 PATCH 139/197] abrtd: prohibit DumpLocation ==
+ WatchCrashdumpArchiveDir. Closes rhbz#854668
+
+Signed-off-by: Denys Vlasenko <dvlasenk@redhat.com>
+---
+ src/daemon/abrtd.c | 7 +++++++
+ 1 file changed, 7 insertions(+)
+
+diff --git a/src/daemon/abrtd.c b/src/daemon/abrtd.c
+index 8265363..54006b3 100644
+--- a/src/daemon/abrtd.c
++++ b/src/daemon/abrtd.c
+@@ -933,8 +933,14 @@ int main(int argc, char** argv)
+         perror_msg("inotify_add_watch failed on '%s'", g_settings_dump_location);
+         goto init_error;
+     }
++    /* ...and upload dir */
+     if (g_settings_sWatchCrashdumpArchiveDir)
+     {
++        if (strcmp(g_settings_sWatchCrashdumpArchiveDir, g_settings_dump_location) == 0)
++        {
++            error_msg("%s and %s can't be the same", "DumpLocation", "WatchCrashdumpArchiveDir");
++            goto init_error;
++        }
+         s_upload_watch = inotify_add_watch(inotify_fd, g_settings_sWatchCrashdumpArchiveDir, IN_CLOSE_WRITE|IN_MOVED_TO);
+         if (s_upload_watch < 0)
+         {
+@@ -942,6 +948,7 @@ int main(int argc, char** argv)
+             goto init_error;
+         }
+     }
++
+     VERB1 log("Adding inotify watch to glib main loop");
+     /* Without nonblocking mode, users observed abrtd blocking
+      * on inotify read forever. Must set fd to non-blocking:
+-- 
+1.8.2.1
+

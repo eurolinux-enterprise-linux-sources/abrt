@@ -1,0 +1,307 @@
+From a8cb080e6e0f543601633b6c1267656bbe2928a6 Mon Sep 17 00:00:00 2001
+From: Richard Marko <rmarko@redhat.com>
+Date: Tue, 7 May 2013 14:44:24 +0200
+Subject: [ABRT EL6 PATCH 182/197] abrt-python: pep8 cleanup
+
+Signed-off-by: Richard Marko <rmarko@redhat.com>
+---
+ src/python-problem/problem/__init__.py  | 28 ++++++++++++++++++++--------
+ src/python-problem/problem/exception.py |  3 +++
+ src/python-problem/problem/proxies.py   | 20 +++++++++++++++-----
+ src/python-problem/problem/tools.py     |  8 +++-----
+ src/python-problem/problem/watch.py     |  8 ++++----
+ 5 files changed, 45 insertions(+), 22 deletions(-)
+
+diff --git a/src/python-problem/problem/__init__.py b/src/python-problem/problem/__init__.py
+index bff64f3..2a27bbe 100644
+--- a/src/python-problem/problem/__init__.py
++++ b/src/python-problem/problem/__init__.py
+@@ -16,7 +16,7 @@ UNKNOWN = 'libreport'
+ REQUIRED_FIELDS = ['executable']
+ 
+ PROBLEM_TYPES = {
+-    'JAVA' : JAVA,
++    'JAVA': JAVA,
+     'SELINUX': SELINUX,
+     'CCPP': CCPP,
+     'PYTHON': PYTHON,
+@@ -24,7 +24,8 @@ PROBLEM_TYPES = {
+     'RUNTIME': RUNTIME,
+     'XORG': XORG,
+     'UNKNOWN': UNKNOWN,
+-    }
++}
++
+ 
+ class Problem(object):
+     '''
+@@ -54,8 +55,8 @@ class Problem(object):
+         # by attr name
+         mapping = {
+             'time': (datetime.datetime.fromtimestamp,
+-                    lambda x: x.strftime('%s'))
+-            }
++                     lambda x: x.strftime('%s'))
++        }
+ 
+         if attr in mapping:
+             fun, revfun = mapping[attr]
+@@ -150,7 +151,7 @@ class Problem(object):
+         for field in REQUIRED_FIELDS:
+             if not hasattr(self, field):
+                 raise exception.ValidationError(
+-                     'Missing required field {0}'.format(field))
++                    'Missing required field {0}'.format(field))
+ 
+     def save(self):
+         ''' Create this problem or update modified data
+@@ -176,7 +177,7 @@ class Problem(object):
+                     self._proxy.del_item(self._probdir, key)
+                 else:
+                     self._proxy.set_item(self._probdir, key,
+-                        self.__cast(key, value, reverse=True))
++                                         self.__cast(key, value, reverse=True))
+ 
+             self._dirty_data = dict()
+         else:
+@@ -194,47 +195,56 @@ class Problem(object):
+             self._probdir = None
+             self._dirty_data = {}
+ 
++
+ class Java(Problem):
+     ''' Java problem '''
+     def __init__(self, reason):
+         super(Java, self).__init__(JAVA, reason)
+ 
++
+ class Selinux(Problem):
+     ''' Selinux problem '''
+     def __init__(self, reason):
+         super(Selinux, self).__init__(SELINUX, reason)
+ 
++
+ class Ccpp(Problem):
+     ''' C, C++ problem '''
+     def __init__(self, reason):
+         super(Ccpp, self).__init__(CCPP, reason)
+ 
++
+ class Python(Problem):
+     ''' Python problem '''
+     def __init__(self, reason):
+         super(Python, self).__init__(PYTHON, reason)
+ 
++
+ class Kerneloops(Problem):
+     ''' Kerneloops problem '''
+     def __init__(self, reason):
+         super(Kerneloops, self).__init__(KERNELOOPS, reason)
+ 
++
+ class Xorg(Problem):
+     ''' Xorg problem '''
+     def __init__(self, reason):
+         super(Xorg, self).__init__(XORG, reason)
+ 
++
+ class Runtime(Problem):
+     ''' Runtime problem '''
+     def __init__(self, reason):
+         super(Runtime, self).__init__(RUNTIME, reason)
+ 
++
+ class Unknown(Problem):
+     ''' Unknown problem '''
+     def __init__(self, reason):
+         super(Unknown, self).__init__('libreport', reason)
+ 
+-def list(auth=False, __proxy = proxies.get_proxy()):
++
++def list(auth=False, __proxy=proxies.get_proxy()):
+     ''' Return the list of the problems
+ 
+     Use ``auth=True`` if authentication should be attempted.
+@@ -249,7 +259,8 @@ def list(auth=False, __proxy = proxies.get_proxy()):
+ 
+     return map(lambda x: tools.problemify(x, __proxy), fun())
+ 
+-def get(identifier, auth=False, __proxy = proxies.get_proxy()):
++
++def get(identifier, auth=False, __proxy=proxies.get_proxy()):
+     ''' Return problem object matching ``identifier``
+ 
+     Return ``None`` in case the problem does not exist.
+@@ -267,6 +278,7 @@ def get(identifier, auth=False, __proxy = proxies.get_proxy()):
+ 
+     return tools.problemify(identifier, __proxy)
+ 
++
+ def get_problem_watcher(auth=False):
+     ''' Return ``ProblemWatcher`` object which can be used
+     to attach callbacks called when new problem is created
+diff --git a/src/python-problem/problem/exception.py b/src/python-problem/problem/exception.py
+index 3e1fa9b..877b6bd 100644
+--- a/src/python-problem/problem/exception.py
++++ b/src/python-problem/problem/exception.py
+@@ -1,11 +1,14 @@
+ class AuthFailure(Exception):
+     pass
+ 
++
+ class InvalidProblem(Exception):
+     pass
+ 
++
+ class UnavailableSource(Exception):
+     pass
+ 
++
+ class ValidationError(Exception):
+     pass
+diff --git a/src/python-problem/problem/proxies.py b/src/python-problem/problem/proxies.py
+index a4cabb9..0b1c7df 100644
+--- a/src/python-problem/problem/proxies.py
++++ b/src/python-problem/problem/proxies.py
+@@ -3,7 +3,7 @@ import logging
+ import report
+ 
+ import problem.config
+-import problem.exception
++
+ 
+ class DBusProxy(object):
+     __instance = None
+@@ -17,8 +17,8 @@ class DBusProxy(object):
+ 
+     def __new__(cls, *args, **kwargs):
+         if not cls.__instance:
+-            cls.__instance = super(DBusProxy, cls).__new__(
+-                                    cls, *args, **kwargs)
++            cls.__instance = super(DBusProxy, cls).__new__(cls, *args, **kwargs)
++
+         return cls.__instance
+ 
+     def connect(self):
+@@ -34,7 +34,7 @@ class DBusProxy(object):
+ 
+         try:
+             self._iface = self.dbus.Interface(self._proxy,
+-                'org.freedesktop.problems')
++                                              'org.freedesktop.problems')
+         except self.dbus.exceptions.DBusException as e:
+             logging.debug('Unable to get dbus interface: {0}'.format(e.message))
+             return
+@@ -84,6 +84,7 @@ class DBusProxy(object):
+     def list_all(self):
+         return map(str, self._dbus_call('GetAllProblems'))
+ 
++
+ class SocketProxy(object):
+     def create(self, problem_dict):
+         import socket
+@@ -109,19 +110,26 @@ class SocketProxy(object):
+ 
+     def get_item(self, *args):
+         raise NotImplementedError
++
+     def set_item(self, *args):
+         raise NotImplementedError
++
+     def del_item(self, *args):
+         raise NotImplementedError
++
+     def delete(self, *args):
+         raise NotImplementedError
++
+     def list(self, *args):
+         raise NotImplementedError
++
+     def list_all(self, *args):
+         return self.list(*args)
++
+     def get_problem_watcher(self):
+         raise NotImplementedError
+ 
++
+ class FsProxy(object):
+     def __init__(self, directory=problem.config.DEFAULT_DUMP_LOCATION):
+         self.directory = directory
+@@ -147,7 +155,8 @@ class FsProxy(object):
+     def get_item(self, dump_dir, name):
+         ddir = self._open_ddir(dump_dir)
+ 
+-        val = ddir.load_text(name,
++        val = ddir.load_text(
++            name,
+             report.DD_OPEN_READONLY |
+             report.DD_FAIL_QUIETLY_EACCES |
+             report.DD_FAIL_QUIETLY_ENOENT |
+@@ -194,6 +203,7 @@ class FsProxy(object):
+         kwargs.update(dict(_all=True))
+         return self.list(*args, **kwargs)
+ 
++
+ def get_proxy():
+     try:
+         import dbus
+diff --git a/src/python-problem/problem/tools.py b/src/python-problem/problem/tools.py
+index 27bd4fd..d6daeb9 100644
+--- a/src/python-problem/problem/tools.py
++++ b/src/python-problem/problem/tools.py
+@@ -1,11 +1,9 @@
+-import os
+-import logging
+-
+ import problem
+ 
++
+ def problemify(probdir, proxy):
+-    by_analyzer = dict(zip(problem.PROBLEM_TYPES.values(), 
+-        problem.PROBLEM_TYPES.keys()))
++    by_analyzer = dict(zip(problem.PROBLEM_TYPES.values(),
++                           problem.PROBLEM_TYPES.keys()))
+ 
+     analyzer = proxy.get_item(probdir, 'analyzer')
+     reason = proxy.get_item(probdir, 'reason')
+diff --git a/src/python-problem/problem/watch.py b/src/python-problem/problem/watch.py
+index b032f5a..2f83fde 100644
+--- a/src/python-problem/problem/watch.py
++++ b/src/python-problem/problem/watch.py
+@@ -3,6 +3,7 @@ import logging
+ 
+ import problem
+ 
++
+ class ProblemWatcher(object):
+     ''' New problem signal handler attached to DBus signal
+ 
+@@ -14,14 +15,13 @@ class ProblemWatcher(object):
+ 
+     def __init__(self, auth):
+         import dbus
+-        import dbus.mainloop.glib
+         import gobject
+ 
+         gobject.threads_init()
+ 
+         bus = dbus.SystemBus(
+-                mainloop=dbus.mainloop.glib.DBusGMainLoop(),
+-                private=True)
++            mainloop=dbus.mainloop.glib.DBusGMainLoop(),
++            private=True)
+ 
+         self.bus = bus
+         self.auth = auth
+@@ -39,7 +39,7 @@ class ProblemWatcher(object):
+         logging.debug('New problem notification received')
+         if int(uid) != os.getuid() and not self.auth:
+             logging.debug('Auth disabled, ignoring crash with'
+-                ' uid: {0}'.format(uid))
++                          ' uid: {0}'.format(uid))
+             return
+ 
+         prob = problem.tools.problemify(ddir, problem.proxies.get_proxy())
+-- 
+1.8.2.1
+

@@ -1,0 +1,26 @@
+From 35e62d76d6315668c1beb1f325dddfc46a90767c Mon Sep 17 00:00:00 2001
+From: Jiri Moskovcak <jmoskovc@redhat.com>
+Date: Mon, 2 Apr 2012 13:37:56 +0200
+Subject: [PATCH 074/105] a-a-analyze-core: check the len if the line array
+ before accessing it rhbz#804309
+
+---
+ src/plugins/abrt-action-analyze-core | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/plugins/abrt-action-analyze-core b/src/plugins/abrt-action-analyze-core
+index 0526211..b683fbe 100644
+--- a/src/plugins/abrt-action-analyze-core
++++ b/src/plugins/abrt-action-analyze-core
+@@ -99,7 +99,7 @@ def extract_info_from_core(coredump_name):
+ 
+     for line in lines:
+         b_ids_line = line.split()
+-        if len(b_ids_line) > 2:
++        if len(b_ids_line) >= EXECUTABLE:
+             # [exe] -> the executable itself
+             # linux-vdso.so.1 -> Virtual Dynamic Shared Object
+             # linux-gate.so.1 -> the same as vdso
+-- 
+1.7.11.2
+

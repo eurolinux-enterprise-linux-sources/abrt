@@ -1,0 +1,23 @@
+From ffb24dff7736083f8da294d530713801911c10f1 Mon Sep 17 00:00:00 2001
+From: Michal Toman <mtoman@redhat.com>
+Date: Fri, 16 Mar 2012 09:58:55 +0100
+Subject: [PATCH 064/105] enable dedup-client
+
+---
+ src/plugins/ccpp_event.conf | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/src/plugins/ccpp_event.conf b/src/plugins/ccpp_event.conf
+index 0e17389..9ac32bb 100644
+--- a/src/plugins/ccpp_event.conf
++++ b/src/plugins/ccpp_event.conf
+@@ -44,5 +44,6 @@ EVENT=analyze_LocalGDB analyzer=CCpp
+ 
+ # Bugzilla requires nonempty duphash
+ EVENT=report_Bugzilla analyzer=CCpp duphash!=
++        abrt-dedup-client
+         test -f component || abrt-action-save-package-data
+         reporter-bugzilla -b -c /etc/libreport/plugins/bugzilla.conf
+-- 
+1.7.11.2
+

@@ -1,0 +1,27 @@
+From 5717e290f0b0e971e2ba953bf8bf941bd2365012 Mon Sep 17 00:00:00 2001
+From: Jiri Moskovcak <jmoskovc@redhat.com>
+Date: Mon, 6 Aug 2012 13:36:57 +0200
+Subject: [PATCH 099/105] use rhel6 deployment url in help
+
+---
+ src/gui-gtk/main.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/src/gui-gtk/main.c b/src/gui-gtk/main.c
+index f34ff3f..1e41cbb 100644
+--- a/src/gui-gtk/main.c
++++ b/src/gui-gtk/main.c
+@@ -33,8 +33,8 @@
+ static void scan_dirs_and_add_to_dirlist(void);
+ 
+ 
+-static const char help_uri[] = "http://docs.fedoraproject.org/en-US/"
+-    "Fedora/14/html/Deployment_Guide/ch-abrt.html";
++static const char help_uri[] = "http://docs.redhat.com/docs/en-US/"
++    "Red_Hat_Enterprise_Linux/6/html/Deployment_Guide/";
+ 
+ static GtkListStore *s_dumps_list_store;
+ static GtkListStore *s_reported_dumps_list_store;
+-- 
+1.7.11.2
+

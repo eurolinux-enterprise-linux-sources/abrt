@@ -1,0 +1,44 @@
+From 9a6fd0dbb754677dc8d746ea5df66986ade1e2ab Mon Sep 17 00:00:00 2001
+From: Jakub Filak <jfilak@redhat.com>
+Date: Wed, 18 Jun 2014 15:40:54 +0200
+Subject: [ABRT PATCH 206/207] abrt_event: fix post-create reporter-uploader
+ examples
+
+The old example was inexant and misleading.
+- an URL with '/' means destination directory
+- an URL without '/' means destination file
+
+Resolves: rhbz#888282
+
+Signed-off-by: Jakub Filak <jfilak@redhat.com>
+---
+ src/daemon/abrt_event.conf | 12 ++++++++++--
+ 1 file changed, 10 insertions(+), 2 deletions(-)
+
+diff --git a/src/daemon/abrt_event.conf b/src/daemon/abrt_event.conf
+index 19b82f3..2ba7854 100644
+--- a/src/daemon/abrt_event.conf
++++ b/src/daemon/abrt_event.conf
+@@ -108,8 +108,16 @@ EVENT=post-create
+         exit 1
+ 
+ 
+-# Example: if you want to upload data immediately at the moment of a crash:
++# Example:
++# if you want to upload data immediately at the moment of a crash to
++# a remote directory:
++# (this example shows how to upload the crash data on
++#  a ABRT centralized crash collection client; man abrt-upload-watch)
+ #EVENT=post-create
+      reporter-upload -u scp://user:password@server.name/var/spool/abrt-upload || :
+ 
+-EVENT=post-create       reporter-mailx --notify-only
+\ No newline at end of file
++# Example:
++# if you want to upload data immediately at the moment of a crash to
++# a remote file
++#EVENT=post-create
++        reporter-upload -u scp://user:password@server.name/tmp/crash.tar.gz || :
+-- 
+1.8.3.1
+

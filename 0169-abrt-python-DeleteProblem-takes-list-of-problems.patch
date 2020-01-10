@@ -1,0 +1,26 @@
+From b23eff77dc0246483cad023b5b718e38e57b8c72 Mon Sep 17 00:00:00 2001
+From: Richard Marko <rmarko@redhat.com>
+Date: Wed, 12 Dec 2012 10:44:06 +0100
+Subject: [ABRT EL6 PATCH 169/197] abrt-python: DeleteProblem takes list of
+ problems
+
+---
+ src/python-problem/problem/proxies.py | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/python-problem/problem/proxies.py b/src/python-problem/problem/proxies.py
+index c90f5aa..92281bb 100644
+--- a/src/python-problem/problem/proxies.py
++++ b/src/python-problem/problem/proxies.py
+@@ -74,7 +74,7 @@ class DBusProxy(object):
+         return self._dbus_call('NewProblem', problem_dict)
+ 
+     def delete(self, dump_dir):
+-        return self._dbus_call('DeleteProblem', dump_dir)
++        return self._dbus_call('DeleteProblem', [dump_dir])
+ 
+     def list(self):
+         return map(str, self._dbus_call('GetProblems'))
+-- 
+1.8.2.1
+

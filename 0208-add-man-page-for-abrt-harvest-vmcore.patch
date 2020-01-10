@@ -1,0 +1,65 @@
+From e863cd01239188fe8fa09d931d43947c4e5e40a2 Mon Sep 17 00:00:00 2001
+From: Jakub Filak <jfilak@redhat.com>
+Date: Thu, 19 Jun 2014 10:49:41 +0200
+Subject: [ABRT PATCH 208/209] add man page for abrt-harvest-vmcore
+
+---
+ doc/Makefile.am             |  1 +
+ doc/abrt-harvest-vmcore.txt | 33 +++++++++++++++++++++++++++++++++
+ 2 files changed, 34 insertions(+)
+ create mode 100644 doc/abrt-harvest-vmcore.txt
+
+diff --git a/doc/Makefile.am b/doc/Makefile.am
+index 1861ff1..0384429 100644
+--- a/doc/Makefile.am
++++ b/doc/Makefile.am
+@@ -10,6 +10,7 @@ MAN1_TXT += abrt-action-analyze-oops.txt
+ MAN1_TXT += abrt-action-analyze-python.txt
+ MAN1_TXT += abrt-action-list-dsos.txt
+ MAN1_TXT += abrt-handle-upload.txt
++MAN1_TXT += abrt-harvest-vmcore.txt
+ MAN1_TXT += abrt-server.txt
+ MAN1_TXT += abrt-cli.txt
+ MAN1_TXT += abrt-action-save-package-data.txt
+diff --git a/doc/abrt-harvest-vmcore.txt b/doc/abrt-harvest-vmcore.txt
+new file mode 100644
+index 0000000..4326f2c
+--- /dev/null
++++ b/doc/abrt-harvest-vmcore.txt
+@@ -0,0 +1,33 @@
++abrt-harvest-vmcore(1)
++====================
++
++NAME
++----
++abrt-harvest-vmcore - Converts VMCores to ABRT problems
++
++SYNOPSIS
++--------
++'abrt-harvest-vmcore'
++
++DESCRIPTION
++-----------
++This script is meant to be run once at system startup after abrtd is up and
++running. It moves all vmcore directories in /var/crash (which are presumably
++created by kdump) to abrtd spool directory.
++
++The goal is to let abrtd notice and process them as new problem data dirs.
++
++FILES
++-----
++/etc/abrt/plugins/vmcore.conf::
++   Configuration file where user can enable copying or moving VMcore to ABRT
++   problem directory
++
++SEE ALSO
++--------
++abrt-vmcore.conf(5)
++abrt.conf(5)
++
++AUTHORS
++-------
++* ABRT team
+-- 
+1.8.3.1
+

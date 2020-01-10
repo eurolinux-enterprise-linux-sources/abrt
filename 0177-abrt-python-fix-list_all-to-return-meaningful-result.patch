@@ -1,0 +1,46 @@
+From 36c20ed1524719290fc0ad41ba7492521998e960 Mon Sep 17 00:00:00 2001
+From: Richard Marko <rmarko@redhat.com>
+Date: Thu, 17 Jan 2013 19:49:25 +0100
+Subject: [ABRT EL6 PATCH 177/197] abrt-python: fix list_all to return
+ meaningful results
+
+---
+ src/python-problem/problem/proxies.py | 11 ++++++++---
+ 1 file changed, 8 insertions(+), 3 deletions(-)
+
+diff --git a/src/python-problem/problem/proxies.py b/src/python-problem/problem/proxies.py
+index 50f762f..8a85d25 100644
+--- a/src/python-problem/problem/proxies.py
++++ b/src/python-problem/problem/proxies.py
+@@ -173,20 +173,25 @@ class FsProxy(object):
+         ddir.delete()
+         return True
+ 
+-    def list(self):
++    def list(self, _all=False):
+         for dir_entry in os.listdir(self.directory):
+             dump_dir = os.path.join(self.directory, dir_entry)
+ 
+             if not os.path.isdir(dump_dir) or not os.access(dump_dir, os.R_OK):
+                 continue
+ 
++            uid = os.getuid()
++            if not _all and os.stat(dump_dir).st_uid != uid:
++                continue
++
+             ddir = report.dd_opendir(dump_dir)
+             if ddir:
+                 ddir.close()
+                 yield dump_dir
+ 
+-    def list_all(self, *args):
+-        return self.list(*args)
++    def list_all(self, *args, **kwargs):
++        kwargs.update(dict(_all=True))
++        return self.list(*args, **kwargs)
+ 
+ def get_proxy():
+     try:
+-- 
+1.8.2.1
+

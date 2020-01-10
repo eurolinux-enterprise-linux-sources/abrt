@@ -1,0 +1,910 @@
+From 558d274411acd07ffd027b76d204b80c62381410 Mon Sep 17 00:00:00 2001
+From: Nikola Pajkovsky <npajkovs@redhat.com>
+Date: Mon, 27 Feb 2012 16:54:08 +0100
+Subject: [PATCH 031/105] koops-unit-test: test for stripping jiffies from
+ kernel trace
+
+Signed-off-by: Nikola Pajkovsky <npajkovs@redhat.com>
+---
+ Makefile.am                      |   4 +
+ examples/oops-with-jiffies.right |  45 ++---
+ examples/oops-with-jiffies.test  |  23 +++
+ src/include/libabrt.h            |   2 +
+ src/lib/kernel.c                 | 347 ++++++++++++++++++++++++++++++++++++++
+ src/plugins/abrt-dump-oops.c     | 352 +--------------------------------------
+ tests/koops-parser.at            |  38 +++++
+ 7 files changed, 439 insertions(+), 372 deletions(-)
+ create mode 100644 examples/oops-with-jiffies.test
+
+diff --git a/Makefile.am b/Makefile.am
+index 07e4cf5..ffd8b1a 100644
+--- a/Makefile.am
++++ b/Makefile.am
+@@ -15,6 +15,10 @@ TESTSUITE_FILES += examples/oops4.right
+ TESTSUITE_FILES += examples/oops-same-as-oops4.right
+ TESTSUITE_FILES += examples/hash-gen-oops6.right
+ TESTSUITE_FILES += examples/hash-gen-same-as-oops6.right
++TESTSUITE_FILES += examples/oops-with-jiffies.test
++TESTSUITE_FILES += examples/oops-with-jiffies.right
++TESTSUITE_FILES += examples/oops_recursive_locking1.test
++TESTSUITE_FILES += examples/oops_recursive_locking1-no-jiffies.test
+ 
+ EXTRA_DIST = doc/coding-style abrt.spec.in abrt.pc.in \
+ 	abrt-version asciidoc.conf init-scripts/* $(TESTSUITE_FILES)
+diff --git a/examples/oops-with-jiffies.right b/examples/oops-with-jiffies.right
+index 7bcc728..369793e 100644
+--- a/examples/oops-with-jiffies.right
++++ b/examples/oops-with-jiffies.right
+@@ -1,23 +1,24 @@
+-[178856.137422] WARNING: at /builddir/build/BUILD/kernel-3.2.fc16/compat-wireless-3.3-rc1-2/include/net/mac80211.h:3618 rate_control_send_low+0x23e/0x250 [mac80211]()
+-[178856.137437] Hardware name: 4177CTO
+-[178856.137438] Modules linked in: usb_storage tcp_lp ppdev parport_pc lp parport fuse ipt_MASQUERADE iptable_nat nf_nat xt_CHECKSUM be2iscsi iscsi_boot_sysfs bnx2i iptable_mangle cnic uio cxgb4i cxgb4 cxgb3i bridge stp llc libcxgbi cxgb3 mdio ib_iser rdma_cm ib_cm iw_cm ib_sa ib_mad ib_core ib_addr iscsi_tcp libiscsi_tcp libiscsi scsi_transport_iscsi ip6t_REJECT nf_conntrack_ipv4 nf_conntrack_ipv6 nf_defrag_ipv6 nf_defrag_ipv4 xt_state ip6table_filter nf_conntrack ip6_tables sha256_generic dm_crypt snd_hda_codec_hdmi snd_hda_codec_conexant snd_hda_intel snd_hda_codec snd_hwdep arc4 vhost_net macvtap macvlan tun snd_seq snd_seq_device virtio_net snd_pcm kvm_intel snd_timer kvm thinkpad_acpi iwlwifi snd mac80211 e1000e tpm_tis tpm tpm_bios nfsd lockd snd_page_alloc soundcore cfg80211 rfkill nfs_acl auth_rpcgss i2c_i801 sunrpc uinput joydev iTCO_wdt iTCO_vendor_support microcode firewire_ohci firewire_core crc_itu_t sdhci_pci sdhci mmc_core wmi i915 drm_kms_helper drm i2c_algo_bit i2
++3.2.5-3.fc16.x86_64
++WARNING: at /builddir/build/BUILD/kernel-3.2.fc16/compat-wireless-3.3-rc1-2/include/net/mac80211.h:3618 rate_control_send_low+0x23e/0x250 [mac80211]()
++Hardware name: 4177CTO
++Modules linked in: usb_storage tcp_lp ppdev parport_pc lp parport fuse ipt_MASQUERADE iptable_nat nf_nat xt_CHECKSUM be2iscsi iscsi_boot_sysfs bnx2i iptable_mangle cnic uio cxgb4i cxgb4 cxgb3i bridge stp llc libcxgbi cxgb3 mdio ib_iser rdma_cm ib_cm iw_cm ib_sa ib_mad ib_core ib_addr iscsi_tcp libiscsi_tcp libiscsi scsi_transport_iscsi ip6t_REJECT nf_conntrack_ipv4 nf_conntrack_ipv6 nf_defrag_ipv6 nf_defrag_ipv4 xt_state ip6table_filter nf_conntrack ip6_tables sha256_generic dm_crypt snd_hda_codec_hdmi snd_hda_codec_conexant snd_hda_intel snd_hda_codec snd_hwdep arc4 vhost_net macvtap macvlan tun snd_seq snd_seq_device virtio_net snd_pcm kvm_intel snd_timer kvm thinkpad_acpi iwlwifi snd mac80211 e1000e tpm_tis tpm tpm_bios nfsd lockd snd_page_alloc soundcore cfg80211 rfkill nfs_acl auth_rpcgss i2c_i801 sunrpc uinput joydev iTCO_wdt iTCO_vendor_support microcode firewire_ohci firewire_core crc_itu_t sdhci_pci sdhci mmc_core wmi i915 drm_kms_helper drm i2c_algo_bit i2
+ c_core video [last unloaded: scsi_wait_scan]
+-[178856.137482] Pid: 22695, comm: ksoftirqd/2 Not tainted 3.2.5-3.fc16.x86_64 #1
+-[178856.137484] Call Trace:
+-[178856.137490]  [<ffffffff8106dd4f>] warn_slowpath_common+0x7f/0xc0
+-[178856.137493]  [<ffffffff8106ddaa>] warn_slowpath_null+0x1a/0x20
+-[178856.137500]  [<ffffffffa02a344e>] rate_control_send_low+0x23e/0x250 [mac80211]
+-[178856.137506]  [<ffffffffa0336d15>] rs_get_rate+0x65/0x1d0 [iwlwifi]
+-[178856.137513]  [<ffffffffa02a37c6>] rate_control_get_rate+0x96/0x170 [mac80211]
+-[178856.137522]  [<ffffffffa02af59f>] invoke_tx_handlers+0x6ff/0x13e0 [mac80211]
+-[178856.137528]  [<ffffffffa028edac>] ? sta_info_get+0x6c/0x80 [mac80211]
+-[178856.137536]  [<ffffffffa02b03d0>] ieee80211_tx+0x60/0xc0 [mac80211]
+-[178856.137543]  [<ffffffffa02b1352>] ieee80211_tx_pending+0x162/0x270 [mac80211]
+-[178856.137546]  [<ffffffff81074d18>] tasklet_action+0x78/0x140
+-[178856.137548]  [<ffffffff81075378>] __do_softirq+0xb8/0x230
+-[178856.137550]  [<ffffffff810755aa>] run_ksoftirqd+0xba/0x170
+-[178856.137552]  [<ffffffff810754f0>] ? __do_softirq+0x230/0x230
+-[178856.137556]  [<ffffffff8108fb9c>] kthread+0x8c/0xa0
+-[178856.137559]  [<ffffffff815eb8f4>] kernel_thread_helper+0x4/0x10
+-[178856.137561]  [<ffffffff8108fb10>] ? kthread_worker_fn+0x190/0x190
+-[178856.137563]  [<ffffffff815eb8f0>] ? gs_change+0x13/0x13
++Pid: 22695, comm: ksoftirqd/2 Not tainted 3.2.5-3.fc16.x86_64 #1
++Call Trace:
++ [<ffffffff8106dd4f>] warn_slowpath_common+0x7f/0xc0
++ [<ffffffff8106ddaa>] warn_slowpath_null+0x1a/0x20
++ [<ffffffffa02a344e>] rate_control_send_low+0x23e/0x250 [mac80211]
++ [<ffffffffa0336d15>] rs_get_rate+0x65/0x1d0 [iwlwifi]
++ [<ffffffffa02a37c6>] rate_control_get_rate+0x96/0x170 [mac80211]
++ [<ffffffffa02af59f>] invoke_tx_handlers+0x6ff/0x13e0 [mac80211]
++ [<ffffffffa028edac>] ? sta_info_get+0x6c/0x80 [mac80211]
++ [<ffffffffa02b03d0>] ieee80211_tx+0x60/0xc0 [mac80211]
++ [<ffffffffa02b1352>] ieee80211_tx_pending+0x162/0x270 [mac80211]
++ [<ffffffff81074d18>] tasklet_action+0x78/0x140
++ [<ffffffff81075378>] __do_softirq+0xb8/0x230
++ [<ffffffff810755aa>] run_ksoftirqd+0xba/0x170
++ [<ffffffff810754f0>] ? __do_softirq+0x230/0x230
++ [<ffffffff8108fb9c>] kthread+0x8c/0xa0
++ [<ffffffff815eb8f4>] kernel_thread_helper+0x4/0x10
++ [<ffffffff8108fb10>] ? kthread_worker_fn+0x190/0x190
++ [<ffffffff815eb8f0>] ? gs_change+0x13/0x13
+diff --git a/examples/oops-with-jiffies.test b/examples/oops-with-jiffies.test
+new file mode 100644
+index 0000000..7bcc728
+--- /dev/null
++++ b/examples/oops-with-jiffies.test
+@@ -0,0 +1,23 @@
++[178856.137422] WARNING: at /builddir/build/BUILD/kernel-3.2.fc16/compat-wireless-3.3-rc1-2/include/net/mac80211.h:3618 rate_control_send_low+0x23e/0x250 [mac80211]()
++[178856.137437] Hardware name: 4177CTO
++[178856.137438] Modules linked in: usb_storage tcp_lp ppdev parport_pc lp parport fuse ipt_MASQUERADE iptable_nat nf_nat xt_CHECKSUM be2iscsi iscsi_boot_sysfs bnx2i iptable_mangle cnic uio cxgb4i cxgb4 cxgb3i bridge stp llc libcxgbi cxgb3 mdio ib_iser rdma_cm ib_cm iw_cm ib_sa ib_mad ib_core ib_addr iscsi_tcp libiscsi_tcp libiscsi scsi_transport_iscsi ip6t_REJECT nf_conntrack_ipv4 nf_conntrack_ipv6 nf_defrag_ipv6 nf_defrag_ipv4 xt_state ip6table_filter nf_conntrack ip6_tables sha256_generic dm_crypt snd_hda_codec_hdmi snd_hda_codec_conexant snd_hda_intel snd_hda_codec snd_hwdep arc4 vhost_net macvtap macvlan tun snd_seq snd_seq_device virtio_net snd_pcm kvm_intel snd_timer kvm thinkpad_acpi iwlwifi snd mac80211 e1000e tpm_tis tpm tpm_bios nfsd lockd snd_page_alloc soundcore cfg80211 rfkill nfs_acl auth_rpcgss i2c_i801 sunrpc uinput joydev iTCO_wdt iTCO_vendor_support microcode firewire_ohci firewire_core crc_itu_t sdhci_pci sdhci mmc_core wmi i915 drm_kms_helper drm i2c_algo_bit i2
++c_core video [last unloaded: scsi_wait_scan]
++[178856.137482] Pid: 22695, comm: ksoftirqd/2 Not tainted 3.2.5-3.fc16.x86_64 #1
++[178856.137484] Call Trace:
++[178856.137490]  [<ffffffff8106dd4f>] warn_slowpath_common+0x7f/0xc0
++[178856.137493]  [<ffffffff8106ddaa>] warn_slowpath_null+0x1a/0x20
++[178856.137500]  [<ffffffffa02a344e>] rate_control_send_low+0x23e/0x250 [mac80211]
++[178856.137506]  [<ffffffffa0336d15>] rs_get_rate+0x65/0x1d0 [iwlwifi]
++[178856.137513]  [<ffffffffa02a37c6>] rate_control_get_rate+0x96/0x170 [mac80211]
++[178856.137522]  [<ffffffffa02af59f>] invoke_tx_handlers+0x6ff/0x13e0 [mac80211]
++[178856.137528]  [<ffffffffa028edac>] ? sta_info_get+0x6c/0x80 [mac80211]
++[178856.137536]  [<ffffffffa02b03d0>] ieee80211_tx+0x60/0xc0 [mac80211]
++[178856.137543]  [<ffffffffa02b1352>] ieee80211_tx_pending+0x162/0x270 [mac80211]
++[178856.137546]  [<ffffffff81074d18>] tasklet_action+0x78/0x140
++[178856.137548]  [<ffffffff81075378>] __do_softirq+0xb8/0x230
++[178856.137550]  [<ffffffff810755aa>] run_ksoftirqd+0xba/0x170
++[178856.137552]  [<ffffffff810754f0>] ? __do_softirq+0x230/0x230
++[178856.137556]  [<ffffffff8108fb9c>] kthread+0x8c/0xa0
++[178856.137559]  [<ffffffff815eb8f4>] kernel_thread_helper+0x4/0x10
++[178856.137561]  [<ffffffff8108fb10>] ? kthread_worker_fn+0x190/0x190
++[178856.137563]  [<ffffffff815eb8f0>] ? gs_change+0x13/0x13
+diff --git a/src/include/libabrt.h b/src/include/libabrt.h
+index c7d2bae..bb23ec3 100644
+--- a/src/include/libabrt.h
++++ b/src/include/libabrt.h
+@@ -71,6 +71,8 @@ char *koops_extract_version(const char *line);
+ char *kernel_tainted_short(const char *kernel_bt);
+ #define koops_hash_str abrt_koops_hash_str
+ void koops_hash_str(char hash_str[SHA1_RESULT_LEN*2 + 1], char *oops_buf, const char *oops_ptr);
++#define koops_extract_oopses abrt_koops_extract_oopses
++void koops_extract_oopses(GList **oops_list, char *buffer, size_t buflen);
+ 
+ #ifdef __cplusplus
+ }
+diff --git a/src/lib/kernel.c b/src/lib/kernel.c
+index 25fab21..ed7c754 100644
+--- a/src/lib/kernel.c
++++ b/src/lib/kernel.c
+@@ -19,6 +19,353 @@
+ 
+ #include "libabrt.h"
+ 
++/*
++ * extract_oops tries to find oops signatures in a log
++ */
++
++struct line_info {
++    char *ptr;
++    char level;
++};
++
++static void record_oops(GList **oops_list, struct line_info* lines_info, int oopsstart, int oopsend)
++{
++    int q;
++    int len;
++    int rv = 1;
++
++    len = 2;
++    for (q = oopsstart; q <= oopsend; q++)
++        len += strlen(lines_info[q].ptr) + 1;
++
++    /* too short oopses are invalid */
++    if (len > 100)
++    {
++        char *oops = (char*)xzalloc(len);
++        char *dst = oops;
++        char *version = NULL;
++        for (q = oopsstart; q <= oopsend; q++)
++        {
++            if (!version)
++                version = koops_extract_version(lines_info[q].ptr);
++            if (lines_info[q].ptr[0])
++            {
++                dst = stpcpy(dst, lines_info[q].ptr);
++                dst = stpcpy(dst, "\n");
++            }
++        }
++        if ((dst - oops) > 100)
++        {
++            *oops_list = g_list_append(
++                        *oops_list,
++                        xasprintf("%s\n%s", (version ? version : "undefined"), oops)
++            );
++        }
++        else
++        {
++            /* too short oopses are invalid */
++            rv = 0;
++        }
++        free(oops);
++        free(version);
++    }
++
++    VERB3 if (rv == 0) log("Dropped oops: too short");
++}
++
++void koops_extract_oopses(GList **oops_list, char *buffer, size_t buflen)
++{
++    char *c;
++    int linecount = 0;
++    int lines_info_size = 0;
++    struct line_info *lines_info = NULL;
++
++    /* Split buffer into lines */
++
++    if (buflen != 0)
++            buffer[buflen - 1] = '\n';  /* the buffer usually ends with \n, but let's make sure */
++    c = buffer;
++    while (c < buffer + buflen)
++    {
++        char linelevel;
++        char *c9;
++        char *colon;
++
++        linecount++;
++        c9 = (char*)memchr(c, '\n', buffer + buflen - c); /* a \n will always be found */
++        assert(c9);
++        *c9 = '\0'; /* turn the \n into a string termination */
++        if (c9 == c)
++            goto next_line;
++
++        /* Is it a syslog file (/var/log/messages or similar)?
++         * Even though _usually_ it looks like "Nov 19 12:34:38 localhost kernel: xxx",
++         * some users run syslog in non-C locale:
++         * "2010-02-22T09:24:08.156534-08:00 gnu-4 gnome-session[2048]: blah blah"
++         *  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ !!!
++         * We detect it by checking for N:NN:NN pattern in first 15 chars
++         * (and this still is not good enough... false positive: "pci 0000:15:00.0: PME# disabled")
++         */
++        colon = strchr(c, ':');
++        if (colon && colon > c && colon < c + 15
++         && isdigit(colon[-1]) /* N:... */
++         && isdigit(colon[1]) /* ...N:NN:... */
++         && isdigit(colon[2])
++         && colon[3] == ':'
++         && isdigit(colon[4]) /* ...N:NN:NN... */
++         && isdigit(colon[5])
++        ) {
++            /* It's syslog file, not a bare dmesg */
++
++            /* Skip non-kernel lines */
++            char *kernel_str = strstr(c, "kernel: ");
++            if (!kernel_str)
++            {
++                /* if we see our own marker:
++                 * "hostname abrt: Kerneloops: Reported 1 kernel oopses to Abrt"
++                 * we know we submitted everything upto here already */
++                if (strstr(c, "kernel oopses to Abrt"))
++                {
++                    VERB3 log("Found our marker at line %d", linecount);
++                    free(lines_info);
++                    lines_info = NULL;
++                    lines_info_size = 0;
++                    list_free_with_free(*oops_list);
++                    *oops_list = NULL;
++                }
++                goto next_line;
++            }
++            c = kernel_str + sizeof("kernel: ")-1;
++        }
++
++        linelevel = 0;
++        /* store and remove kernel log level */
++        if (*c == '<' && c[1] && c[2] == '>')
++        {
++            linelevel = c[1];
++            c += 3;
++        }
++        /* remove jiffies time stamp counter if present
++         * jiffies are unsigned long, so it can be 2^64 long, which is
++         * 20 decimal digits*/
++        if (*c == '[')
++        {
++            char *c2 = strchr(c, '.');
++            char *c3 = strchr(c, ']');
++            if (c2 && c3 && (c2 < c3) && (c3-c) < 21 && (c2-c) < 8)
++            {
++                c = c3 + 1;
++                if (*c == ' ')
++                        c++;
++            }
++        }
++        if ((lines_info_size & 0xfff) == 0)
++        {
++            lines_info = xrealloc(lines_info, (lines_info_size + 0x1000) * sizeof(lines_info[0]));
++        }
++        lines_info[lines_info_size].ptr = c;
++        lines_info[lines_info_size].level = linelevel;
++        lines_info_size++;
++next_line:
++        c = c9 + 1;
++    }
++
++    /* Analyze lines */
++
++    int i;
++    char prevlevel = 0;
++    int oopsstart = -1;
++    int inbacktrace = 0;
++
++    i = 0;
++    while (i < lines_info_size)
++    {
++        char *curline = lines_info[i].ptr;
++
++        if (curline == NULL)
++        {
++            i++;
++            continue;
++        }
++        while (*curline == ' ')
++            curline++;
++
++        if (oopsstart < 0)
++        {
++            /* Find start-of-oops markers */
++            /* In some comparisons, we skip 1st letter, to avoid dealing with
++             * changes in capitalization in kernel. For example, I see that
++             * current kernel git (at 2011-01-01) has both "kernel BUG at ..."
++             * and "Kernel BUG at ..." messages, and I don't want to change
++             * the code below whenever kernel is changed to use "K" (or "k")
++             * uniformly.
++             */
++            if (strstr(curline, /*g*/ "eneral protection fault:"))
++                oopsstart = i;
++            else if (strstr(curline, "BUG:"))
++                oopsstart = i;
++            else if (strstr(curline, /*k*/ "ernel BUG at"))
++                oopsstart = i;
++            /* WARN_ON() generated message */
++            else if (strstr(curline, "WARNING: at "))
++                oopsstart = i;
++            else if (strstr(curline, /*u*/ "nable to handle kernel"))
++                oopsstart = i;
++            else if (strstr(curline, /*d*/ "ouble fault:"))
++                oopsstart = i;
++            else if (strstr(curline, "do_IRQ: stack overflow:"))
++                oopsstart = i;
++            else if (strstr(curline, "RTNL: assertion failed"))
++                 oopsstart = i;
++            else if (strstr(curline, /*e*/ "eek! page_mapcount(page) went negative!"))
++                oopsstart = i;
++            else if (strstr(curline, /*n*/ "ear stack overflow (cur:"))
++                oopsstart = i;
++            else if (strstr(curline, /*b*/ "adness at"))
++                oopsstart = i;
++            else if (strstr(curline, "NETDEV WATCHDOG"))
++                oopsstart = i;
++            else if (strstr(curline, /*s*/ "ysctl table check failed"))
++                oopsstart = i;
++            else if (strstr(curline, "INFO: possible recursive locking detected"))
++                oopsstart = i;
++            // Not needed: "--[ cut here ]--" is always followed
++            // by "Badness at", "kernel BUG at", or "WARNING: at" string
++            //else if (strstr(curline, "------------[ cut here ]------------"))
++            //  oopsstart = i;
++            else if (strstr(curline, "list_del corruption"))
++                oopsstart = i;
++            else if (strstr(curline, "list_add corruption"))
++                oopsstart = i;
++            /* "irq NN: nobody cared..." */
++            else if (strstr(curline, ": nobody cared"))
++                oopsstart = i;
++            else if (strstr(curline, "IRQ handler type mismatch"))
++                oopsstart = i;
++
++            if (oopsstart >= 0)
++            {
++                /* debug information */
++                VERB3 {
++                    log("Found oops at line %d: '%s'", oopsstart, lines_info[oopsstart].ptr);
++                    if (oopsstart != i)
++                            log("Trigger line is %d: '%s'", i, c);
++                }
++                /* try to find the end marker */
++                int i2 = i + 1;
++                while (i2 < lines_info_size && i2 < (i+50))
++                {
++                    if (strstr(lines_info[i2].ptr, "---[ end trace"))
++                    {
++                        inbacktrace = 1;
++                        i = i2;
++                        break;
++                    }
++                    i2++;
++                }
++            }
++        }
++
++        /* Are we entering a call trace part? */
++        /* a call trace starts with "Call Trace:" or with the " [<.......>] function+0xFF/0xAA" pattern */
++        if (oopsstart >= 0 && !inbacktrace)
++        {
++            if (strstr(curline, "Call Trace:"))
++                inbacktrace = 1;
++            else
++            if (strnlen(curline, 9) > 8
++             && curline[0] == '[' && curline[1] == '<'
++             && strstr(curline, ">]")
++             && strstr(curline, "+0x")
++             && strstr(curline, "/0x")
++            ) {
++                inbacktrace = 1;
++            }
++        }
++
++        /* Are we at the end of an oops? */
++        else if (oopsstart >= 0 && inbacktrace)
++        {
++            int oopsend = INT_MAX;
++
++            /* line needs to start with " [" or have "] [" if it is still a call trace */
++            /* example: "[<ffffffffa006c156>] radeon_get_ring_head+0x16/0x41 [radeon]" */
++            if (curline[0] != '['
++             && !strstr(curline, "] [")
++             && !strstr(curline, "--- Exception")
++             && !strstr(curline, "LR =")
++             && !strstr(curline, "<#DF>")
++             && !strstr(curline, "<IRQ>")
++             && !strstr(curline, "<EOI>")
++             && !strstr(curline, "<<EOE>>")
++             && strncmp(curline, "Code: ", 6) != 0
++             && strncmp(curline, "RIP ", 4) != 0
++             && strncmp(curline, "RSP ", 4) != 0
++            ) {
++                oopsend = i-1; /* not a call trace line */
++            }
++            /* oops lines are always more than 8 chars long */
++            else if (strnlen(curline, 8) < 8)
++                oopsend = i-1;
++            /* single oopses are of the same loglevel */
++            else if (lines_info[i].level != prevlevel)
++                oopsend = i-1;
++            else if (strstr(curline, "Instruction dump:"))
++                oopsend = i;
++            /* if a new oops starts, this one has ended */
++            else if (strstr(curline, "WARNING: at ") && oopsstart != i) /* WARN_ON() generated message */
++                oopsend = i-1;
++            else if (strstr(curline, "Unable to handle") && oopsstart != i)
++                oopsend = i-1;
++            /* kernel end-of-oops marker (not including marker itself) */
++            else if (strstr(curline, "---[ end trace"))
++                oopsend = i-1;
++
++            if (oopsend <= i)
++            {
++                VERB3 log("End of oops at line %d (%d): '%s'", oopsend, i, lines_info[oopsend].ptr);
++                record_oops(oops_list, lines_info, oopsstart, oopsend);
++                oopsstart = -1;
++                inbacktrace = 0;
++            }
++        }
++
++        prevlevel = lines_info[i].level;
++        i++;
++
++        if (oopsstart >= 0)
++        {
++            /* Do we have a suspiciously long oops? Cancel it.
++             * Bumped from 60 to 80 (see examples/oops_recursive_locking1.test)
++             */
++            if (i - oopsstart > 80)
++            {
++                inbacktrace = 0;
++                oopsstart = -1;
++                VERB3 log("Dropped oops, too long");
++                continue;
++            }
++            if (!inbacktrace && i - oopsstart > 40)
++            {
++                /*inbacktrace = 0; - already is */
++                oopsstart = -1;
++                VERB3 log("Dropped oops, too long");
++                continue;
++            }
++        }
++    } /* while (i < lines_info_size) */
++
++    /* process last oops if we have one */
++    if (oopsstart >= 0 && inbacktrace)
++    {
++        int oopsend = i-1;
++        VERB3 log("End of oops at line %d (end of file): '%s'", oopsend, lines_info[oopsend].ptr);
++        record_oops(oops_list, lines_info, oopsstart, oopsend);
++    }
++
++    free(lines_info);
++}
++
+ void koops_hash_str(char hash_str[SHA1_RESULT_LEN*2 + 1], char *oops_buf, const char *oops_ptr)
+ {
+     // Example of call trace part of oops:
+diff --git a/src/plugins/abrt-dump-oops.c b/src/plugins/abrt-dump-oops.c
+index 006c801..60b84fa 100644
+--- a/src/plugins/abrt-dump-oops.c
++++ b/src/plugins/abrt-dump-oops.c
+@@ -22,354 +22,6 @@
+ #include "libabrt.h"
+ 
+ 
+-/*
+- * extract_oops tries to find oops signatures in a log
+- */
+-
+-struct line_info {
+-    char *ptr;
+-    char level;
+-};
+-
+-static void record_oops(GList **oops_list, struct line_info* lines_info, int oopsstart, int oopsend)
+-{
+-    int q;
+-    int len;
+-    int rv = 1;
+-
+-    len = 2;
+-    for (q = oopsstart; q <= oopsend; q++)
+-        len += strlen(lines_info[q].ptr) + 1;
+-
+-    /* too short oopses are invalid */
+-    if (len > 100)
+-    {
+-        char *oops = (char*)xzalloc(len);
+-        char *dst = oops;
+-        char *version = NULL;
+-        for (q = oopsstart; q <= oopsend; q++)
+-        {
+-            if (!version)
+-                version = koops_extract_version(lines_info[q].ptr);
+-            if (lines_info[q].ptr[0])
+-            {
+-                dst = stpcpy(dst, lines_info[q].ptr);
+-                dst = stpcpy(dst, "\n");
+-            }
+-        }
+-        if ((dst - oops) > 100)
+-        {
+-            *oops_list = g_list_append(
+-                        *oops_list,
+-                        xasprintf("%s\n%s", (version ? version : "undefined"), oops)
+-            );
+-        }
+-        else
+-        {
+-            /* too short oopses are invalid */
+-            rv = 0;
+-        }
+-        free(oops);
+-        free(version);
+-    }
+-
+-    VERB3 if (rv == 0) log("Dropped oops: too short");
+-}
+-
+-static void extract_oopses(GList **oops_list, char *buffer, size_t buflen)
+-{
+-    char *c;
+-    int linecount = 0;
+-    int lines_info_size = 0;
+-    struct line_info *lines_info = NULL;
+-
+-    /* Split buffer into lines */
+-
+-    if (buflen != 0)
+-            buffer[buflen - 1] = '\n';  /* the buffer usually ends with \n, but let's make sure */
+-    c = buffer;
+-    while (c < buffer + buflen)
+-    {
+-        char linelevel;
+-        char *c9;
+-        char *colon;
+-
+-        linecount++;
+-        c9 = (char*)memchr(c, '\n', buffer + buflen - c); /* a \n will always be found */
+-        assert(c9);
+-        *c9 = '\0'; /* turn the \n into a string termination */
+-        if (c9 == c)
+-            goto next_line;
+-
+-        /* Is it a syslog file (/var/log/messages or similar)?
+-         * Even though _usually_ it looks like "Nov 19 12:34:38 localhost kernel: xxx",
+-         * some users run syslog in non-C locale:
+-         * "2010-02-22T09:24:08.156534-08:00 gnu-4 gnome-session[2048]: blah blah"
+-         *  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ !!!
+-         * We detect it by checking for N:NN:NN pattern in first 15 chars
+-         * (and this still is not good enough... false positive: "pci 0000:15:00.0: PME# disabled")
+-         */
+-        colon = strchr(c, ':');
+-        if (colon && colon > c && colon < c + 15
+-         && isdigit(colon[-1]) /* N:... */
+-         && isdigit(colon[1]) /* ...N:NN:... */
+-         && isdigit(colon[2])
+-         && colon[3] == ':'
+-         && isdigit(colon[4]) /* ...N:NN:NN... */
+-         && isdigit(colon[5])
+-        ) {
+-            /* It's syslog file, not a bare dmesg */
+-
+-            /* Skip non-kernel lines */
+-            char *kernel_str = strstr(c, "kernel: ");
+-            if (!kernel_str)
+-            {
+-                /* if we see our own marker:
+-                 * "hostname abrt: Kerneloops: Reported 1 kernel oopses to Abrt"
+-                 * we know we submitted everything upto here already */
+-                if (strstr(c, "kernel oopses to Abrt"))
+-                {
+-                    VERB3 log("Found our marker at line %d", linecount);
+-                    free(lines_info);
+-                    lines_info = NULL;
+-                    lines_info_size = 0;
+-                    list_free_with_free(*oops_list);
+-                    *oops_list = NULL;
+-                }
+-                goto next_line;
+-            }
+-            c = kernel_str + sizeof("kernel: ")-1;
+-        }
+-
+-        linelevel = 0;
+-        /* store and remove kernel log level */
+-        if (*c == '<' && c[1] && c[2] == '>')
+-        {
+-            linelevel = c[1];
+-            c += 3;
+-        }
+-        /* remove jiffies time stamp counter if present
+-         * jiffies are unsigned long, so it can be 2^64 long, which is
+-         * 20 decimal digits*/
+-        if (*c == '[')
+-        {
+-            char *c2 = strchr(c, '.');
+-            char *c3 = strchr(c, ']');
+-            if (c2 && c3 && (c2 < c3) && (c3-c) < 21 && (c2-c) < 8)
+-            {
+-                c = c3 + 1;
+-                if (*c == ' ')
+-                        c++;
+-            }
+-        }
+-        if ((lines_info_size & 0xfff) == 0)
+-        {
+-            lines_info = xrealloc(lines_info, (lines_info_size + 0x1000) * sizeof(lines_info[0]));
+-        }
+-        lines_info[lines_info_size].ptr = c;
+-        lines_info[lines_info_size].level = linelevel;
+-        lines_info_size++;
+-next_line:
+-        c = c9 + 1;
+-    }
+-
+-    /* Analyze lines */
+-
+-    int i;
+-    char prevlevel = 0;
+-    int oopsstart = -1;
+-    int inbacktrace = 0;
+-
+-    i = 0;
+-    while (i < lines_info_size)
+-    {
+-        char *curline = lines_info[i].ptr;
+-
+-        if (curline == NULL)
+-        {
+-            i++;
+-            continue;
+-        }
+-        while (*curline == ' ')
+-            curline++;
+-
+-        if (oopsstart < 0)
+-        {
+-            /* Find start-of-oops markers */
+-            /* In some comparisons, we skip 1st letter, to avoid dealing with
+-             * changes in capitalization in kernel. For example, I see that
+-             * current kernel git (at 2011-01-01) has both "kernel BUG at ..."
+-             * and "Kernel BUG at ..." messages, and I don't want to change
+-             * the code below whenever kernel is changed to use "K" (or "k")
+-             * uniformly.
+-             */
+-            if (strstr(curline, /*g*/ "eneral protection fault:"))
+-                oopsstart = i;
+-            else if (strstr(curline, "BUG:"))
+-                oopsstart = i;
+-            else if (strstr(curline, /*k*/ "ernel BUG at"))
+-                oopsstart = i;
+-            /* WARN_ON() generated message */
+-            else if (strstr(curline, "WARNING: at "))
+-                oopsstart = i;
+-            else if (strstr(curline, /*u*/ "nable to handle kernel"))
+-                oopsstart = i;
+-            else if (strstr(curline, /*d*/ "ouble fault:"))
+-                oopsstart = i;
+-            else if (strstr(curline, "do_IRQ: stack overflow:"))
+-                oopsstart = i;
+-            else if (strstr(curline, "RTNL: assertion failed"))
+-                 oopsstart = i;
+-            else if (strstr(curline, /*e*/ "eek! page_mapcount(page) went negative!"))
+-                oopsstart = i;
+-            else if (strstr(curline, /*n*/ "ear stack overflow (cur:"))
+-                oopsstart = i;
+-            else if (strstr(curline, /*b*/ "adness at"))
+-                oopsstart = i;
+-            else if (strstr(curline, "NETDEV WATCHDOG"))
+-                oopsstart = i;
+-            else if (strstr(curline, /*s*/ "ysctl table check failed"))
+-                oopsstart = i;
+-            else if (strstr(curline, "INFO: possible recursive locking detected"))
+-                oopsstart = i;
+-            // Not needed: "--[ cut here ]--" is always followed
+-            // by "Badness at", "kernel BUG at", or "WARNING: at" string
+-            //else if (strstr(curline, "------------[ cut here ]------------"))
+-            //  oopsstart = i;
+-            else if (strstr(curline, "list_del corruption"))
+-                oopsstart = i;
+-            else if (strstr(curline, "list_add corruption"))
+-                oopsstart = i;
+-            /* "irq NN: nobody cared..." */
+-            else if (strstr(curline, ": nobody cared"))
+-                oopsstart = i;
+-            else if (strstr(curline, "IRQ handler type mismatch"))
+-                oopsstart = i;
+-
+-            if (oopsstart >= 0)
+-            {
+-                /* debug information */
+-                VERB3 {
+-                    log("Found oops at line %d: '%s'", oopsstart, lines_info[oopsstart].ptr);
+-                    if (oopsstart != i)
+-                            log("Trigger line is %d: '%s'", i, c);
+-                }
+-                /* try to find the end marker */
+-                int i2 = i + 1;
+-                while (i2 < lines_info_size && i2 < (i+50))
+-                {
+-                    if (strstr(lines_info[i2].ptr, "---[ end trace"))
+-                    {
+-                        inbacktrace = 1;
+-                        i = i2;
+-                        break;
+-                    }
+-                    i2++;
+-                }
+-            }
+-        }
+-
+-        /* Are we entering a call trace part? */
+-        /* a call trace starts with "Call Trace:" or with the " [<.......>] function+0xFF/0xAA" pattern */
+-        if (oopsstart >= 0 && !inbacktrace)
+-        {
+-            if (strstr(curline, "Call Trace:"))
+-                inbacktrace = 1;
+-            else
+-            if (strnlen(curline, 9) > 8
+-             && curline[0] == '[' && curline[1] == '<'
+-             && strstr(curline, ">]")
+-             && strstr(curline, "+0x")
+-             && strstr(curline, "/0x")
+-            ) {
+-                inbacktrace = 1;
+-            }
+-        }
+-
+-        /* Are we at the end of an oops? */
+-        else if (oopsstart >= 0 && inbacktrace)
+-        {
+-            int oopsend = INT_MAX;
+-
+-            /* line needs to start with " [" or have "] [" if it is still a call trace */
+-            /* example: "[<ffffffffa006c156>] radeon_get_ring_head+0x16/0x41 [radeon]" */
+-            if (curline[0] != '['
+-             && !strstr(curline, "] [")
+-             && !strstr(curline, "--- Exception")
+-             && !strstr(curline, "LR =")
+-             && !strstr(curline, "<#DF>")
+-             && !strstr(curline, "<IRQ>")
+-             && !strstr(curline, "<EOI>")
+-             && !strstr(curline, "<<EOE>>")
+-             && strncmp(curline, "Code: ", 6) != 0
+-             && strncmp(curline, "RIP ", 4) != 0
+-             && strncmp(curline, "RSP ", 4) != 0
+-            ) {
+-                oopsend = i-1; /* not a call trace line */
+-            }
+-            /* oops lines are always more than 8 chars long */
+-            else if (strnlen(curline, 8) < 8)
+-                oopsend = i-1;
+-            /* single oopses are of the same loglevel */
+-            else if (lines_info[i].level != prevlevel)
+-                oopsend = i-1;
+-            else if (strstr(curline, "Instruction dump:"))
+-                oopsend = i;
+-            /* if a new oops starts, this one has ended */
+-            else if (strstr(curline, "WARNING: at ") && oopsstart != i) /* WARN_ON() generated message */
+-                oopsend = i-1;
+-            else if (strstr(curline, "Unable to handle") && oopsstart != i)
+-                oopsend = i-1;
+-            /* kernel end-of-oops marker (not including marker itself) */
+-            else if (strstr(curline, "---[ end trace"))
+-                oopsend = i-1;
+-
+-            if (oopsend <= i)
+-            {
+-                VERB3 log("End of oops at line %d (%d): '%s'", oopsend, i, lines_info[oopsend].ptr);
+-                record_oops(oops_list, lines_info, oopsstart, oopsend);
+-                oopsstart = -1;
+-                inbacktrace = 0;
+-            }
+-        }
+-
+-        prevlevel = lines_info[i].level;
+-        i++;
+-
+-        if (oopsstart >= 0)
+-        {
+-            /* Do we have a suspiciously long oops? Cancel it.
+-             * Bumped from 60 to 80 (see examples/oops_recursive_locking1.test)
+-             */
+-            if (i - oopsstart > 80)
+-            {
+-                inbacktrace = 0;
+-                oopsstart = -1;
+-                VERB3 log("Dropped oops, too long");
+-                continue;
+-            }
+-            if (!inbacktrace && i - oopsstart > 40)
+-            {
+-                /*inbacktrace = 0; - already is */
+-                oopsstart = -1;
+-                VERB3 log("Dropped oops, too long");
+-                continue;
+-            }
+-        }
+-    } /* while (i < lines_info_size) */
+-
+-    /* process last oops if we have one */
+-    if (oopsstart >= 0 && inbacktrace)
+-    {
+-        int oopsend = i-1;
+-        VERB3 log("End of oops at line %d (end of file): '%s'", oopsend, lines_info[oopsend].ptr);
+-        record_oops(oops_list, lines_info, oopsstart, oopsend);
+-    }
+-
+-    free(lines_info);
+-}
+-
+-
+ static bool world_readable_dump = false;
+ static const char *debug_dumps_dir = ".";
+ 
+@@ -387,7 +39,7 @@ static void scan_dmesg(GList **oops_list)
+      */
+     char *buffer = xzalloc(16*1024);
+     syscall(__NR_syslog, 3, buffer, 16*1024 - 1); /* always NUL terminated */
+-    extract_oopses(oops_list, buffer, strlen(buffer));
++    koops_extract_oopses(oops_list, buffer, strlen(buffer));
+     free(buffer);
+ }
+ 
+@@ -446,7 +98,7 @@ static int scan_syslog_file(GList **oops_list, int fd, struct stat *statbuf, int
+         if (partial_line_len > 500) /* cap it */
+             partial_line_len = 500;
+ 
+-        extract_oopses(oops_list, buffer, r);
++        koops_extract_oopses(oops_list, buffer, r);
+         cur_pos += r;
+     } while (cur_pos < statbuf->st_size);
+ 
+diff --git a/tests/koops-parser.at b/tests/koops-parser.at
+index f6b2f63..493098b 100644
+--- a/tests/koops-parser.at
++++ b/tests/koops-parser.at
+@@ -148,3 +148,41 @@ int main(void)
+ }
+ 
+ ]])
++
++AT_TESTFUN([koops_remove_jiffies_timestamp],
++[[
++#include "libabrt.h"
++#include "koops-test.h"
++
++int run_test(const struct test_struct *test)
++{
++	char *oops_jiffies = fread_full(test->filename);
++	char *oops_no_jiffies = fread_full(test->expected_results);
++
++	/* for testing purpose, I will record only one koops */
++	GList *oops_list = NULL;
++	koops_extract_oopses(&oops_list, oops_jiffies, strlen(oops_jiffies));
++
++	if (oops_list && !strcmp((char *)oops_list->data, oops_no_jiffies))
++		return 0;
++
++	log("'%s' \n '%s'", (char *)oops_list->data, oops_no_jiffies);
++
++	return 1;
++}
++
++int main(void)
++{
++	struct test_struct all_same_hashes[] = {
++		{ EXAMPLE_PFX"/oops-with-jiffies.test", EXAMPLE_PFX"/oops-with-jiffies.right" },
++		{ EXAMPLE_PFX"/oops_recursive_locking1.test", EXAMPLE_PFX"/oops_recursive_locking1-no-jiffies.test"},
++	};
++
++	int ret = 0;
++	for (int i = 0; i < ARRAY_SIZE(all_same_hashes); ++i)
++		ret |= run_test(&all_same_hashes[i]);
++
++	return ret;
++}
++
++]])
+-- 
+1.7.11.2
+

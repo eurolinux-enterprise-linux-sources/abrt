@@ -1,0 +1,27 @@
+From 87f7a4afe3b35f5472e43e4c3291618666efad27 Mon Sep 17 00:00:00 2001
+From: Jiri Moskovcak <jmoskovc@redhat.com>
+Date: Wed, 22 Aug 2012 17:12:20 +0200
+Subject: [PATCH 114/114] added relro and fpie flags for
+ a-a-install-debuginfo-to-abrt-cache rhbz#812284
+
+---
+ src/plugins/Makefile.am | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/src/plugins/Makefile.am b/src/plugins/Makefile.am
+index 52db426..95d0d7e 100644
+--- a/src/plugins/Makefile.am
++++ b/src/plugins/Makefile.am
+@@ -187,7 +187,8 @@ abrt_action_install_debuginfo_to_abrt_cache_CPPFLAGS = \
+     -I$(srcdir)/../lib \
+     -D_GNU_SOURCE \
+     $(LIBREPORT_CFLAGS) \
+-    -Wall -Wwrite-strings
++    -Wall -Wwrite-strings \
++    -fPIE -Wl,-z,bind_now
+ abrt_action_install_debuginfo_to_abrt_cache_LDADD = \
+      $(LIBREPORT_LIBS) \
+      ../lib/libabrt.la
+-- 
+1.7.11.4
+

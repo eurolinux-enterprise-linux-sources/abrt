@@ -1,0 +1,182 @@
+From 0e6621cea30f9fe101b70c0aa19a701f9f44f807 Mon Sep 17 00:00:00 2001
+From: Jakub Filak <jfilak@redhat.com>
+Date: Thu, 12 Jul 2012 14:34:33 +0200
+Subject: [PATCH 090/105] rhbz#839285 : do not delete an uploaded archive by
+ default
+
+* DeleteUploaded config option was added to abrt.conf
+* the default value of this new option is 'no'
+
+* the option was introduced because /var/spool/abrt-upload is not
+  writable by default
+* for more details see rhbz#836988
+
+Signed-off-by: Jakub Filak <jfilak@redhat.com>
+---
+ doc/abrt.conf.txt             |  6 ++++++
+ src/daemon/abrt-handle-upload | 29 +++++++++++++++++++++--------
+ src/daemon/abrt.conf          |  5 +++++
+ src/daemon/abrtd.c            | 10 ++++++++--
+ src/include/libabrt.h         |  3 +++
+ src/lib/abrt_conf.c           |  8 ++++++++
+ 6 files changed, 51 insertions(+), 10 deletions(-)
+
+diff --git a/doc/abrt.conf.txt b/doc/abrt.conf.txt
+index db7f471..6626596 100644
+--- a/doc/abrt.conf.txt
++++ b/doc/abrt.conf.txt
+@@ -30,6 +30,12 @@ WatchCrashdumpArchiveDir = 'directory'::
+    via ftp, scp, etc. The directory must exist and be writable for 'abrt'.
+    There is no default.
+ 
++DeleteUploaded = 'yes/no'::
++   The daemon will delete an uploaded crashdump archive after an atempt to
++   unpack it. An archive will be delete whether unpacking finishes successfully
++   or not.
++   The default value is 'no'.
++
+ SEE ALSO
+ --------
+ abrtd(8)
+diff --git a/src/daemon/abrt-handle-upload b/src/daemon/abrt-handle-upload
+index a6ab3ae..85123d2 100755
+--- a/src/daemon/abrt-handle-upload
++++ b/src/daemon/abrt-handle-upload
+@@ -3,7 +3,12 @@
+ # The task of this script is to unpack the file and move
+ # problem data found in it to abrtd spool directory.
+ #
+-# Usage: abrt-handle-upload ABRT_SPOOL_DIR UPLOAD_DIR FILENAME
++# Usage: abrt-handle-upload [-d] ABRT_SPOOL_DIR UPLOAD_DIR FILENAME
++#
++#   -d             - deletes an uploaded archive
++#   ABRT_SPOOL_DIR - a directory where valid uploaded archives are unpacked to
++#   UPLOAD_DIR     - a directory where uploaded archives are stored in
++#   FILENAME       - an uploaded archive file name
+ 
+ #echo "Started: $0 $*"
+ 
+@@ -18,13 +23,15 @@ print_clean_and_die()
+ die_exitcode=1
+ delete_on_exit=""
+ 
++delete_archive=false
++if test x"$1" == x"-d"; then delete_archive=true; shift; fi
++
+ abrt_dir="$1"
+ upload_dir="$2"
+ archive="$3"
+ 
+ test -d "$abrt_dir" || print_clean_and_die "Not a directory: '$abrt_dir'"
+ test -d "$upload_dir" || print_clean_and_die "Not a directory: '$upload_dir'"
+-test x"${archive%.working}" != x"$archive" && print_clean_and_die "Skipping: '$archive'"
+ test x"${archive#/}" != x"$archive" && print_clean_and_die "Skipping: '$archive' (starts with slash)"
+ test x"${archive#.}" != x"$archive" && print_clean_and_die "Skipping: '$archive' (starts with dot)"
+ test x"${archive#*..}" != x"$archive" && print_clean_and_die "Skipping: '$archive' (contains ..)"
+@@ -41,17 +48,23 @@ test x"${archive%.tar.xz}" != x"$archive" && unpacker="unxz"
+ 
+ test "$unpacker" || print_clean_and_die "Unknown file type: '$archive'"
+ 
+-tempdir="remote.`date +%Y-%m-%d-%H:%M:%S.%N`.$$"
++workingdir=`mktemp -d "abrt_handle_upload.XXXXXXXXXX" --tmpdir=/tmp` || print_clean_and_die "Can't create working directory"
++delete_on_exit="$workingdir"
++
++tempdir="$workingdir/remote.`date +%Y-%m-%d-%H:%M:%S.%N`.$$"
++working_archive="$workingdir/$archive"
+ 
+-mv -- "$archive" "$archive.working" || print_clean_and_die "Can't lock '$archive'"
++if $delete_archive; then
++    mv -- "$archive" "$working_archive" || print_clean_and_die "Can't move '$archive' to '$working_archive'"
++else
++    cp -- "$archive" "$working_archive" || print_clean_and_die "Can't copy '$archive' to '$working_archive'"
++fi
+ 
+-delete_on_exit="$archive.working"
+-$unpacker -t -- "$archive.working" || print_clean_and_die "Verification error on '$archive'"
++$unpacker -t -- "$working_archive" || print_clean_and_die "Verification error on '$archive'"
+ 
+ echo "Unpacking '$archive'"
+ mkdir "$tempdir" || print_clean_and_die "Can't create '$tempdir' directory"
+-delete_on_exit="$archive.working $tempdir"
+-$unpacker <"$archive.working" | tar xf - -C "$tempdir" || print_clean_and_die "Can't unpack '$archive'"
++$unpacker <"$working_archive" | tar xf - -C "$tempdir" || print_clean_and_die "Can't unpack '$archive'"
+ 
+ # The archive can contain either plain dump files
+ # or one or more complete problem data directories.
+diff --git a/src/daemon/abrt.conf b/src/daemon/abrt.conf
+index 9a35f0c..c7ad417 100644
+--- a/src/daemon/abrt.conf
++++ b/src/daemon/abrt.conf
+@@ -15,3 +15,8 @@ MaxCrashReportsSize = 1000
+ # Changing dump location could cause problems with SELinux. See man abrt_selinux(8).
+ #
+ #DumpLocation = /var/spool/abrt
++
++# If you want to automatically clean the upload directory you have to tweak the
++# selinux policy.
++#
++DeleteUploaded = no
+diff --git a/src/daemon/abrtd.c b/src/daemon/abrtd.c
+index e2ace8e..1afec1e 100644
+--- a/src/daemon/abrtd.c
++++ b/src/daemon/abrtd.c
+@@ -439,8 +439,14 @@ static gboolean handle_inotify_cb(GIOChannel *gio, GIOCondition condition, gpoin
+                 if (fork() == 0)
+                 {
+                     xchdir(dir);
+-                    execlp("abrt-handle-upload", "abrt-handle-upload",
+-                           g_settings_dump_location, dir, name, (char*)NULL);
++
++                    if (g_settings_delete_uploaded)
++                        execlp("abrt-handle-upload", "abrt-handle-upload", "-d",
++                               g_settings_dump_location, dir, name, (char*)NULL);
++                    else
++                        execlp("abrt-handle-upload", "abrt-handle-upload",
++                               g_settings_dump_location, dir, name, (char*)NULL);
++
+                     error_msg_and_die("Can't execute '%s'", "abrt-handle-upload");
+                 }
+             }
+diff --git a/src/include/libabrt.h b/src/include/libabrt.h
+index bb23ec3..26b8db3 100644
+--- a/src/include/libabrt.h
++++ b/src/include/libabrt.h
+@@ -53,6 +53,9 @@ extern unsigned int  g_settings_nMaxCrashReportsSize;
+ extern char *        g_settings_sWatchCrashdumpArchiveDir;
+ #define g_settings_dump_location abrt_g_settings_dump_location
+ extern char *        g_settings_dump_location;
++#define g_settings_delete_uploaded abrt_g_settings_delete_uploaded
++extern bool          g_settings_delete_uploaded;
++
+ 
+ #define load_abrt_conf abrt_load_abrt_conf
+ int load_abrt_conf();
+diff --git a/src/lib/abrt_conf.c b/src/lib/abrt_conf.c
+index fc8a04f..0b53c21 100644
+--- a/src/lib/abrt_conf.c
++++ b/src/lib/abrt_conf.c
+@@ -21,6 +21,7 @@
+ char *        g_settings_sWatchCrashdumpArchiveDir = NULL;
+ unsigned int  g_settings_nMaxCrashReportsSize = 1000;
+ char *        g_settings_dump_location = NULL;
++bool          g_settings_delete_uploaded = 0;
+ 
+ void free_abrt_conf_data()
+ {
+@@ -64,6 +65,13 @@ static void ParseCommon(map_string_h *settings, const char *conf_filename)
+     else
+         g_settings_dump_location = xstrdup("/var/spool/abrt");
+ 
++    value = g_hash_table_lookup(settings, "DeleteUploaded");
++    if (value)
++    {
++        g_settings_delete_uploaded = string_to_bool(value);
++        g_hash_table_remove(settings, "DeleteUploaded");
++    }
++
+     GHashTableIter iter;
+     char *name;
+     /*char *value; - already declared */
+-- 
+1.7.11.2
+

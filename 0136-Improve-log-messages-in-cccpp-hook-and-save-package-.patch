@@ -1,0 +1,114 @@
+From 8b1c5e7ec1ae11018992dc347eef753bad72a542 Mon Sep 17 00:00:00 2001
+From: Denys Vlasenko <dvlasenk@redhat.com>
+Date: Tue, 26 Feb 2013 16:24:32 +0100
+Subject: [ABRT EL6 PATCH 136/197] Improve log messages in cccpp hook and
+ save-package-data. See rhbz#909617
+
+If core file can't be opened, say so.
+Only for other cases say "it is not a regular file with link count 1".
+
+Properly format absolute coredump names (don't prepend current dir).
+
+Explain why "doesn't belong to any package" message is emitted:
+because ProcessUnpackaged isn't set.
+
+Signed-off-by: Denys Vlasenko <dvlasenk@redhat.com>
+---
+ src/daemon/abrt-action-save-package-data.c |  5 ++++-
+ src/hooks/abrt-hook-ccpp.c                 | 23 ++++++++++++++++++-----
+ 2 files changed, 22 insertions(+), 6 deletions(-)
+
+diff --git a/src/daemon/abrt-action-save-package-data.c b/src/daemon/abrt-action-save-package-data.c
+index c5dfc9e..955c805 100644
+--- a/src/daemon/abrt-action-save-package-data.c
++++ b/src/daemon/abrt-action-save-package-data.c
+@@ -231,7 +231,10 @@ static int SavePackageDescriptionToDebugDump(const char *dump_dir_name)
+                 VERB2 log("Crash in unpackaged executable '%s', proceeding without packaging information", executable);
+                 goto ret0; /* no error */
+             }
+-            log("Executable '%s' doesn't belong to any package", executable);
++            log("Executable '%s' doesn't belong to any package"
++                " and ProcessUnpackaged is set to 'no'",
++                executable
++            );
+             goto ret; /* return 1 (failure) */
+         }
+ 
+diff --git a/src/hooks/abrt-hook-ccpp.c b/src/hooks/abrt-hook-ccpp.c
+index 35c7688..ad30716 100644
+--- a/src/hooks/abrt-hook-ccpp.c
++++ b/src/hooks/abrt-hook-ccpp.c
+@@ -161,6 +161,12 @@ static int user_core_fd = -1;
+  */
+ static const char percent_specifiers[] = "%scpugteh";
+ static char *core_basename = (char*) "core";
++/*
++ * Used for error messages only.
++ * It is either the same as core_basename if it is absolute,
++ * or $PWD/core_basename.
++ */
++static char *full_core_basename;
+ 
+ 
+ static char* get_executable(pid_t pid, int *fd_p)
+@@ -330,6 +336,10 @@ static int open_user_core(uid_t uid, uid_t fsuid, pid_t pid, char **percent_valu
+         }
+     }
+ 
++    full_core_basename = core_basename;
++    if (core_basename[0] != '/')
++        core_basename = concat_path_file(user_pwd, core_basename);
++
+     /* Open (create) compat core file.
+      * man core:
+      * There are various circumstances in which a core dump file
+@@ -360,9 +370,9 @@ static int open_user_core(uid_t uid, uid_t fsuid, pid_t pid, char **percent_valu
+      * (However, see the description of the prctl(2) PR_SET_DUMPABLE operation,
+      * and the description of the /proc/sys/fs/suid_dumpable file in proc(5).)
+      */
+-    /* Do not O_TRUNC: if later checks fail, we do not want to have file already modified here */
+     struct stat sb;
+     errno = 0;
++    /* Do not O_TRUNC: if later checks fail, we do not want to have file already modified here */
+     int user_core_fd = open(core_basename, O_WRONLY | O_CREAT | O_NOFOLLOW, 0600); /* kernel makes 0600 too */
+     xsetegid(0);
+     xseteuid(0);
+@@ -372,12 +382,15 @@ static int open_user_core(uid_t uid, uid_t fsuid, pid_t pid, char **percent_valu
+      || sb.st_nlink != 1
+     /* kernel internal dumper checks this too: if (inode->i_uid != current->fsuid) <fail>, need to mimic? */
+     ) {
+-        perror_msg("%s/%s fd(%i) is not a regular file with link count 1", user_pwd, core_basename, user_core_fd);
++        if (user_core_fd < 0)
++            perror_msg("Can't open '%s'", full_core_basename);
++        else
++            perror_msg("'%s' is not a regular file with link count 1", full_core_basename);
+         return -1;
+     }
+     if (ftruncate(user_core_fd, 0) != 0) {
+         /* perror first, otherwise unlink may trash errno */
+-        perror_msg("Truncate %s/%s", user_pwd, core_basename);
++        perror_msg("Can't truncate '%s' to size 0", full_core_basename);
+         unlink(core_basename);
+         return -1;
+     }
+@@ -844,7 +857,7 @@ int main(int argc, char** argv)
+         if (fsync(user_core_fd) != 0 || close(user_core_fd) != 0 || core_size < 0)
+         {
+             /* perror first, otherwise unlink may trash errno */
+-            perror_msg("Error writing '%s/%s'", user_pwd, core_basename);
++            perror_msg("Error writing '%s'", full_core_basename);
+             xchdir(user_pwd);
+             unlink(core_basename);
+             return 1;
+@@ -855,7 +868,7 @@ int main(int argc, char** argv)
+             unlink(core_basename);
+             return 1;
+         }
+-        log("Saved core dump of pid %lu to %s/%s (%llu bytes)", (long)pid, user_pwd, core_basename, (long long)core_size);
++        log("Saved core dump of pid %lu to %s (%llu bytes)", (long)pid, full_core_basename, (long long)core_size);
+     }
+ 
+     return 0;
+-- 
+1.8.2.1
+

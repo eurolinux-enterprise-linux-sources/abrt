@@ -1,0 +1,158 @@
+From fa7e9391f1c3dbb5d2ebfb8f68b399b1639bb594 Mon Sep 17 00:00:00 2001
+From: Richard Marko <rmarko@redhat.com>
+Date: Wed, 5 Dec 2012 16:49:59 +0100
+Subject: [ABRT EL6 PATCH 158/197] abrt-python: fix each test to run standalone
+
+---
+ src/python-problem/tests/test_api.py      |  6 ++++++
+ src/python-problem/tests/test_get.py      | 13 +++++++++++++
+ src/python-problem/tests/test_internal.py | 13 +++++++++++++
+ src/python-problem/tests/test_list.py     | 13 +++++++++++++
+ src/python-problem/tests/test_tools.py    | 13 +++++++++++++
+ 5 files changed, 58 insertions(+)
+ mode change 100644 => 100755 src/python-problem/tests/test_api.py
+ mode change 100644 => 100755 src/python-problem/tests/test_get.py
+ mode change 100644 => 100755 src/python-problem/tests/test_internal.py
+ mode change 100644 => 100755 src/python-problem/tests/test_list.py
+ mode change 100644 => 100755 src/python-problem/tests/test_tools.py
+
+diff --git a/src/python-problem/tests/test_api.py b/src/python-problem/tests/test_api.py
+old mode 100644
+new mode 100755
+index 22f874e..2ae8dbd
+--- a/src/python-problem/tests/test_api.py
++++ b/src/python-problem/tests/test_api.py
+@@ -1,9 +1,14 @@
++#!/usr/bin/env python
+ import os
++import sys
+ import time
+ import logging
+ import datetime
+ import unittest
+ 
++sys.path.insert(0, os.path.abspath(".."))
++os.environ["PATH"] = "{0}:{1}".format(os.path.abspath(".."), os.environ["PATH"])
++
+ from nose import tools
+ 
+ from base import ProblematicTestCase
+@@ -27,6 +32,7 @@ class ProblemAPITestCase(ProblematicTestCase):
+         tools.ok_(
+             '<stdin>'  in prob.executable or
+             'tests.py' in prob.executable or
++            'test_api.py' in prob.executable or
+             'nosetest' in prob.executable)
+ 
+     def test_getattr(self):
+diff --git a/src/python-problem/tests/test_get.py b/src/python-problem/tests/test_get.py
+old mode 100644
+new mode 100755
+index 0ebb395..d1f0cd4
+--- a/src/python-problem/tests/test_get.py
++++ b/src/python-problem/tests/test_get.py
+@@ -1,3 +1,12 @@
++#!/usr/bin/env python
++import os
++import sys
++import logging
++import unittest
++
++sys.path.insert(0, os.path.abspath(".."))
++os.environ["PATH"] = "{0}:{1}".format(os.path.abspath(".."), os.environ["PATH"])
++
+ from nose import tools
+ 
+ from base import ProblematicTestCase
+@@ -20,3 +29,7 @@ class GetTestCase(ProblematicTestCase):
+ 
+     def test_get_nonexistent(self):
+         tools.ok_(problem.get('random', False, self.proxy) is None)
++
++if __name__ == '__main__':
++    logging.basicConfig(level=logging.DEBUG)
++    unittest.main()
+diff --git a/src/python-problem/tests/test_internal.py b/src/python-problem/tests/test_internal.py
+old mode 100644
+new mode 100755
+index 9d7ab81..bbed9c5
+--- a/src/python-problem/tests/test_internal.py
++++ b/src/python-problem/tests/test_internal.py
+@@ -1,3 +1,12 @@
++#!/usr/bin/env python
++import os
++import sys
++import logging
++import unittest
++
++sys.path.insert(0, os.path.abspath(".."))
++os.environ["PATH"] = "{0}:{1}".format(os.path.abspath(".."), os.environ["PATH"])
++
+ from nose import tools
+ 
+ from base import ProblematicTestCase
+@@ -118,3 +127,7 @@ class InternalProblemImplementationTestCase(ProblematicTestCase):
+         tools.eq_(prob._persisted, False)
+         tools.eq_(prob._probdir, None)
+         tools.eq_(prob._dirty_data, {})
++
++if __name__ == '__main__':
++    logging.basicConfig(level=logging.DEBUG)
++    unittest.main()
+diff --git a/src/python-problem/tests/test_list.py b/src/python-problem/tests/test_list.py
+old mode 100644
+new mode 100755
+index 5c98c87..b68bcff
+--- a/src/python-problem/tests/test_list.py
++++ b/src/python-problem/tests/test_list.py
+@@ -1,3 +1,13 @@
++#!/usr/bin/env python
++import os
++import sys
++import logging
++
++sys.path.insert(0, os.path.abspath(".."))
++os.environ["PATH"] = "{0}:{1}".format(os.path.abspath(".."), os.environ["PATH"])
++
++import unittest
++
+ from nose import tools
+ 
+ from base import ProblematicTestCase
+@@ -25,3 +35,6 @@ class ListTestCase(ProblematicTestCase):
+ 
+         prob.delete()
+ 
++if __name__ == '__main__':
++    logging.basicConfig(level=logging.DEBUG)
++    unittest.main()
+diff --git a/src/python-problem/tests/test_tools.py b/src/python-problem/tests/test_tools.py
+old mode 100644
+new mode 100755
+index 9cf3d51..b440637
+--- a/src/python-problem/tests/test_tools.py
++++ b/src/python-problem/tests/test_tools.py
+@@ -1,3 +1,12 @@
++#!/usr/bin/env python
++import os
++import sys
++import logging
++import unittest
++
++sys.path.insert(0, os.path.abspath(".."))
++os.environ["PATH"] = "{0}:{1}".format(os.path.abspath(".."), os.environ["PATH"])
++
+ from nose import tools
+ 
+ from base import ProblematicTestCase
+@@ -28,3 +37,7 @@ class ProblemifyTestCase(ProblematicTestCase):
+ 
+         prob2 = problem.tools.problemify(ident, self.proxy)
+         tools.eq_(type(prob2), problem.Unknown)
++
++if __name__ == '__main__':
++    logging.basicConfig(level=logging.DEBUG)
++    unittest.main()
+-- 
+1.8.2.1
+

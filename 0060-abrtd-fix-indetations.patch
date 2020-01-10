@@ -1,0 +1,27 @@
+From 9783a52460816323afa90a79b83019f366dee5f6 Mon Sep 17 00:00:00 2001
+From: Nikola Pajkovsky <npajkovs@redhat.com>
+Date: Mon, 12 Mar 2012 11:26:35 +0100
+Subject: [PATCH 060/105] abrtd: fix indetations
+
+Signed-off-by: Nikola Pajkovsky <npajkovs@redhat.com>
+---
+ src/daemon/abrtd.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/src/daemon/abrtd.c b/src/daemon/abrtd.c
+index b664d54..e2ace8e 100644
+--- a/src/daemon/abrtd.c
++++ b/src/daemon/abrtd.c
+@@ -357,7 +357,8 @@ static mw_result_t run_post_create_and_load_data(const char *dump_dir_name, prob
+     /* Don't increase crash count if we are working with newly uploaded
+      * directory (remote crash) which already has it's crash count set.
+      */
+-    if((status != 0 && dup_of_dir) || count == 0) {
++    if((status != 0 && dup_of_dir) || count == 0)
++    {
+         count++;
+         char new_count_str[sizeof(long)*3 + 2];
+         sprintf(new_count_str, "%lu", count);
+-- 
+1.7.11.2
+

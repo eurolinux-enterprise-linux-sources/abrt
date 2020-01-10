@@ -1,0 +1,93 @@
+From b4d0c2dd3ea675334662d7e237a58c0daf33bea2 Mon Sep 17 00:00:00 2001
+From: Jiri Moskovcak <jmoskovc@redhat.com>
+Date: Thu, 7 Mar 2013 16:22:25 +0100
+Subject: [ABRT EL6 PATCH 141/197] - analyze-ccpp don't suid to abrt when run
+ as root, related rhbz#759443
+
+- in RHEL debuginfo is in RHN and abrt needs root privileges
+  to be able to access RHN repositories, so if abrt-cli(gui) is run as root
+  a-a-i-di-to-abrt-cache has to be called directly without the suided wraper
+
+Signed-off-by: Jiri Moskovcak <jmoskovc@redhat.com>
+Signed-off-by: Jakub Filak <jfilak@redhat.com>
+
+Conflicts:
+	src/plugins/Makefile.am
+	src/plugins/ccpp_event.conf
+---
+ src/plugins/Makefile.am                    |  6 ++++--
+ src/plugins/abrt-action-analyze-ccpp-local | 17 +++++++++++++++++
+ src/plugins/ccpp_event.conf                |  8 +-------
+ 3 files changed, 22 insertions(+), 9 deletions(-)
+ create mode 100755 src/plugins/abrt-action-analyze-ccpp-local
+
+diff --git a/src/plugins/Makefile.am b/src/plugins/Makefile.am
+index 590aee2..bebe2cd 100644
+--- a/src/plugins/Makefile.am
++++ b/src/plugins/Makefile.am
+@@ -4,7 +4,8 @@ bin_SCRIPTS = \
+     abrt-action-install-debuginfo \
+     abrt-action-analyze-core \
+     abrt-action-analyze-vmcore \
+-    abrt-action-list-dsos
++    abrt-action-list-dsos \
++    abrt-action-analyze-ccpp-local
+ 
+ bin_PROGRAMS = \
+     abrt-dump-oops \
+@@ -60,7 +61,8 @@ EXTRA_DIST = \
+     analyze_LocalGDB.xml.in \
+     analyze_VMcore.xml.in \
+     abrt-action-analyze-vmcore \
+-    https-utils.h
++    https-utils.h \
++    abrt-action-analyze-ccpp-local
+ 
+ abrt_dump_oops_SOURCES = \
+     abrt-dump-oops.c
+diff --git a/src/plugins/abrt-action-analyze-ccpp-local b/src/plugins/abrt-action-analyze-ccpp-local
+new file mode 100755
+index 0000000..0c5ab34
+--- /dev/null
++++ b/src/plugins/abrt-action-analyze-ccpp-local
+@@ -0,0 +1,17 @@
++#! /bin/sh
++if [ "`id -u`x" == "0x" ]; then
++    abrt-action-analyze-core --core=coredump | abrt-action-install-debuginfo --ids=- --size_mb=4096
++else
++    abrt-action-analyze-core --core=coredump | /usr/libexec/abrt-action-install-debuginfo-to-abrt-cache --ids=- --size_mb=4096
++fi;
++
++if [ "$?x" == "0x" ]; then
++    abrt-action-generate-backtrace &&
++    abrt-action-analyze-backtrace &&
++    (
++        bug_id=$(reporter-bugzilla -h `cat duphash`) &&
++        if test -n "$bug_id"; then
++            abrt-bodhi -r -b $bug_id
++        fi
++    )
++fi
+\ No newline at end of file
+diff --git a/src/plugins/ccpp_event.conf b/src/plugins/ccpp_event.conf
+index e7f2717..bf8e9a5 100644
+--- a/src/plugins/ccpp_event.conf
++++ b/src/plugins/ccpp_event.conf
+@@ -32,13 +32,7 @@ EVENT=collect_xsession_errors analyzer=CCpp dso_list~=.*/libX11.*
+ # TODO: can we still specify additional directories to search for debuginfos,
+ # or was this ability lost with move to python installer?
+ EVENT=analyze_LocalGDB analyzer=CCpp
+-        abrt-action-analyze-core --core=coredump -o build_ids &&
+-        # In RHEL we don't want to install anything by default
+-        # and also this would fail, as the debuginfo repositories 
+-        # are not available without root password rhbz#759443
+-        # /usr/libexec/abrt-action-install-debuginfo-to-abrt-cache --size_mb=4096 &&
+-        abrt-action-generate-backtrace &&
+-        abrt-action-analyze-backtrace
++        abrt-action-analyze-ccpp-local
+ 
+ 
+ # Bugzilla requires nonempty duphash
+-- 
+1.8.2.1
+

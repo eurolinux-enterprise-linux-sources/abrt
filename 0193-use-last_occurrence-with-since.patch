@@ -1,0 +1,29 @@
+From cad555895f9f58420a4e1cbfbf1ee2788a6bc3b2 Mon Sep 17 00:00:00 2001
+From: Jiri Moskovcak <jmoskovc@redhat.com>
+Date: Mon, 6 May 2013 13:00:56 +0200
+Subject: [ABRT EL6 PATCH 193/197] use last_occurrence with --since
+
+closes #645
+
+Signed-off-by: Jiri Moskovcak <jmoskovc@redhat.com>
+Signed-off-by: Richard Marko <rmarko@redhat.com>
+---
+ src/lib/problem_api.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/lib/problem_api.c b/src/lib/problem_api.c
+index b7dad47..d940767 100644
+--- a/src/lib/problem_api.c
++++ b/src/lib/problem_api.c
+@@ -174,7 +174,7 @@ GList *get_problem_dirs_for_element_in_time(uid_t uid,
+     };
+ 
+     const struct problem_condition timec = {
+-        .field_name = FILENAME_TIME,
++        .field_name = FILENAME_LAST_OCCURRENCE,
+         .args = &interval,
+         .evaluate = time_interval_problem_condition
+     };
+-- 
+1.8.2.1
+

@@ -1,0 +1,25 @@
+From a688bb20f61b4322d0d5cd793bcd2ba0ed16436f Mon Sep 17 00:00:00 2001
+From: Jiri Moskovcak <jmoskovc@redhat.com>
+Date: Mon, 27 Feb 2012 14:39:51 +0100
+Subject: [PATCH 027/105] vmcore: fixed exception in error path
+
+---
+ src/plugins/abrt-action-analyze-vmcore.in | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/plugins/abrt-action-analyze-vmcore.in b/src/plugins/abrt-action-analyze-vmcore.in
+index 9446f8f..13c2bd2 100644
+--- a/src/plugins/abrt-action-analyze-vmcore.in
++++ b/src/plugins/abrt-action-analyze-vmcore.in
+@@ -30,7 +30,7 @@ if __name__ == "__main__":
+     try:
+         opts, args = getopt.getopt(sys.argv[1:], "hvd", ["help", "tmpdir=", "cache=", "core="])
+     except getopt.GetoptError, err:
+-        error_msg(err) # prints something like "option -a not recognized"
++        error_msg(str(err)) # prints something like "option -a not recognized"
+         error_msg_and_die(help_text)
+     usercache = False
+ 
+-- 
+1.7.11.2
+

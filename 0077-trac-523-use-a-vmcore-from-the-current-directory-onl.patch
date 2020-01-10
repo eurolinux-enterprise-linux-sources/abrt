@@ -1,0 +1,31 @@
+From 59c9a04571b06351d74ea8eafc1141a1080f3443 Mon Sep 17 00:00:00 2001
+From: Jakub Filak <jfilak@redhat.com>
+Date: Thu, 5 Apr 2012 11:43:02 +0200
+Subject: [PATCH 077/105] trac#523 use a vmcore from the current directory
+ only if a path to the vmcore wasn't passed as an
+ argument
+
+---
+ src/plugins/abrt-action-analyze-vmcore.in | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/src/plugins/abrt-action-analyze-vmcore.in b/src/plugins/abrt-action-analyze-vmcore.in
+index 13c2bd2..af606c4 100644
+--- a/src/plugins/abrt-action-analyze-vmcore.in
++++ b/src/plugins/abrt-action-analyze-vmcore.in
+@@ -54,8 +54,11 @@ if __name__ == "__main__":
+                 print str(ex)
+                 sys.exit(RETURN_FAILURE)
+ 
+-    vmcore = os.path.join(os.getcwd(), "vmcore")
++    if not vmcore:
++        vmcore = os.path.join(os.getcwd(), "vmcore")
++
+     set_verbosity(verbose)
++
+     if not os.path.exists(vmcore):
+         print _("File {0} doesn't exist").format(vmcore)
+         sys.exit(RETURN_FAILURE)
+-- 
+1.7.11.2
+

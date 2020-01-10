@@ -1,0 +1,102 @@
+From 53c6256f756d233d0468ca00e138b2372f1bc1e4 Mon Sep 17 00:00:00 2001
+From: Richard Marko <rmarko@redhat.com>
+Date: Wed, 9 Jan 2013 11:10:16 +0100
+Subject: [ABRT EL6 PATCH 172/197] abrt-python: add missing watch examples
+
+---
+ src/python-problem/examples/Makefile.am            |  4 +-
+ .../examples/thread_watch_example.py               | 43 ++++++++++++++++++++++
+ src/python-problem/examples/watch_example.py       | 16 ++++++++
+ 3 files changed, 62 insertions(+), 1 deletion(-)
+ create mode 100644 src/python-problem/examples/thread_watch_example.py
+ create mode 100644 src/python-problem/examples/watch_example.py
+
+diff --git a/src/python-problem/examples/Makefile.am b/src/python-problem/examples/Makefile.am
+index e276be0..079e2d4 100644
+--- a/src/python-problem/examples/Makefile.am
++++ b/src/python-problem/examples/Makefile.am
+@@ -4,7 +4,9 @@ example_python_DATA = \
+ 	list_all_example.py \
+ 	list_example.py \
+ 	selinux_example.py \
+-	userspace_example.py
++	userspace_example.py \
++	watch_example.py \
++	thread_watch_example.py
+ 
+ example_pythondir = $(datadir)/doc/$(PACKAGE)-python-$(VERSION)/examples
+ 
+diff --git a/src/python-problem/examples/thread_watch_example.py b/src/python-problem/examples/thread_watch_example.py
+new file mode 100644
+index 0000000..b8fbdfa
+--- /dev/null
++++ b/src/python-problem/examples/thread_watch_example.py
+@@ -0,0 +1,43 @@
++from __future__ import print_function
++
++import sys
++import time
++import problem
++import threading
++
++class ProblemWatchThread(threading.Thread):
++    def __init__(self):
++        super(ProblemWatchThread, self).__init__()
++        self.pwatch = problem.get_problem_watcher()
++        self.pwatch.add_callback(self.handle)
++        self.probcount = 0
++
++    def handle(self, prob):
++        self.probcount += 1
++        print('{0}: {1}'.format(self.probcount, prob))
++        # prob.delete()
++
++    def run(self):
++        self.pwatch.run()
++
++    def stop(self):
++        self.pwatch.quit()
++
++pwt = ProblemWatchThread()
++pwt.start()
++
++i = 0
++print('Waiting for new problem to appear')
++spinner = ['\\', '|', '/', '-']
++
++try:
++    while True:
++        time.sleep(0.1)
++        print('{0}\r'.format(spinner[i]), end='')
++        i += 1
++        i = i % len(spinner)
++        sys.stdout.flush()
++except KeyboardInterrupt:
++    pwt.stop()
++
++pwt.stop()
+diff --git a/src/python-problem/examples/watch_example.py b/src/python-problem/examples/watch_example.py
+new file mode 100644
+index 0000000..58d1fb7
+--- /dev/null
++++ b/src/python-problem/examples/watch_example.py
+@@ -0,0 +1,16 @@
++import problem
++import logging
++
++logging.basicConfig(level=logging.DEBUG)
++
++def monitor(prob):
++    print(prob)
++    prob.delete()
++
++pwatch = problem.get_problem_watcher()
++pwatch.add_callback(monitor)
++
++try:
++    pwatch.run()
++except KeyboardInterrupt:
++    pwatch.quit()
+-- 
+1.8.2.1
+

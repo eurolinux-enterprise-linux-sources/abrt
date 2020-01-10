@@ -1,0 +1,65 @@
+From acf14318048d454d7e40870d5fb9ad051cd14d6b Mon Sep 17 00:00:00 2001
+From: Jiri Moskovcak <jmoskovc@redhat.com>
+Date: Fri, 10 May 2013 12:43:54 +0200
+Subject: [ABRT EL6 PATCH 154/197] added a console notification script to
+ profile.d - rhbz#961231
+
+- this script notifies users about existing when he
+  logs in to the machine
+- it remembers the last time when it was executed and shows
+  only the number of new crashes since the last run
+- uses $HOME/.cache/abrt even though the XDG dirs are not default
+  in RHEL6, but it doesn't make sense to make it differ from Fedora
+
+Signed-off-by: Jiri Moskovcak <jmoskovc@redhat.com>
+Signed-off-by: Jakub Filak <jfilak@redhat.com>
+---
+ src/cli/Makefile.am                  |  4 ++++
+ src/cli/abrt-console-notification.sh | 22 ++++++++++++++++++++++
+ 2 files changed, 26 insertions(+)
+ create mode 100755 src/cli/abrt-console-notification.sh
+
+diff --git a/src/cli/Makefile.am b/src/cli/Makefile.am
+index 4edf1c6..3e4c976 100644
+--- a/src/cli/Makefile.am
++++ b/src/cli/Makefile.am
+@@ -22,4 +22,8 @@ abrt_cli_LDADD = \
+     $(LIBREPORT_LIBS) \
+     ../lib/libabrt.la
+ 
++profileconfigdir = $(sysconfdir)/profile.d
++dist_profileconfig_DATA = \
++    abrt-console-notification.sh
++
+ DEFS = -DLOCALEDIR=\"$(localedir)\" @DEFS@
+diff --git a/src/cli/abrt-console-notification.sh b/src/cli/abrt-console-notification.sh
+new file mode 100755
+index 0000000..4082909
+--- /dev/null
++++ b/src/cli/abrt-console-notification.sh
+@@ -0,0 +1,22 @@
++LPATHDIR="$HOME/.cache/abrt"
++SINCEFILE="$LPATHDIR/lastnotification"
++
++if [ ! -f "$LPATHDIR" ]; then
++    mkdir -p "$LPATHDIR"
++fi
++
++TMPPATH=`mktemp --tmpdir="$LPATHDIR" lastnotification.XXXXXXXX 2> /dev/null`
++
++SINCE=0
++if [ -f "$SINCEFILE" ]; then
++    SINCE=`cat $SINCEFILE 2> /dev/null`
++fi
++
++# always update the lastnotification
++if [ -f "$TMPPATH" ]; then
++    date +%s > "$TMPPATH"
++    mv "$TMPPATH" "$SINCEFILE"
++fi
++
++abrt-cli status --since="$SINCE" 2> /dev/null
++
+-- 
+1.8.2.1
+

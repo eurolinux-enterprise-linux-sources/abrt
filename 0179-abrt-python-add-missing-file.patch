@@ -1,0 +1,20 @@
+From 9f7eed27b5e6cd68b765fa9a2f2e6218e44bf9d6 Mon Sep 17 00:00:00 2001
+From: Richard Marko <rmarko@redhat.com>
+Date: Fri, 18 Jan 2013 17:31:40 +0100
+Subject: [ABRT EL6 PATCH 179/197] abrt-python: add missing file
+
+---
+ src/python-problem/problem/config.py.in | 1 +
+ 1 file changed, 1 insertion(+)
+ create mode 100644 src/python-problem/problem/config.py.in
+
+diff --git a/src/python-problem/problem/config.py.in b/src/python-problem/problem/config.py.in
+new file mode 100644
+index 0000000..7eaa93f
+--- /dev/null
++++ b/src/python-problem/problem/config.py.in
+@@ -0,0 +1 @@
++DEFAULT_DUMP_LOCATION = '@DEFAULT_DUMP_LOCATION@'
+-- 
+1.8.2.1
+

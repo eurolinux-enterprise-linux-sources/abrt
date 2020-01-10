@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<event>
+    <name>Collect yours vim configuration files</name>
+    <description>Save .vimrc and .gvimrc from your home directory</description>
+    <description xml:lang="da">Gem .vimrc og .gvimrc fra din hjemmemappe</description>
+    <description xml:lang="gu">તમારી ઘર ડિરેક્ટરીમાંથી .vimrc અને .gvimrc સંગ્રહો</description>
+    <description xml:lang="it">Salva .vimrc e .gvimrc della tua home directory</description>
+    <description xml:lang="pt_BR">Salvar arquivos .vimrc e gvimrc da sua pasta pessoal</description>
+    <long-description>Checks if there are .vimrc and .gvimrc in your home directory and saves them as user_vimrc and user_gvimrc, respectively.</long-description>
+    <creates-items>user_vimrc,user_gvimrc</creates-items>
+</event>

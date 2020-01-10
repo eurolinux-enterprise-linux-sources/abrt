@@ -1,0 +1,222 @@
+From c70368986f767f587cb18e2204ce2e09439323af Mon Sep 17 00:00:00 2001
+From: Jakub Filak <jfilak@redhat.com>
+Date: Fri, 20 Jun 2014 17:37:21 +0200
+Subject: [ABRT PATCH 211/212] koops: provide general hints and tips for
+ useless backtraces
+
+Resolves rhbz#1084467
+
+Signed-off-by: Jakub Filak <jfilak@redhat.com>
+---
+ doc/Makefile.am                        |  1 +
+ doc/abrt-oops.conf.txt                 | 27 ++++++++++++++++++++++++
+ src/hooks/Makefile.am                  |  3 ++-
+ src/hooks/oops.conf                    |  5 +++++
+ src/include/libabrt.h                  |  2 ++
+ src/lib/kernel.c                       | 11 +++++++---
+ src/plugins/Makefile.am                |  1 +
+ src/plugins/abrt-action-analyze-oops.c | 38 ++++++++++++++++++++++++++++++++--
+ 8 files changed, 82 insertions(+), 6 deletions(-)
+ create mode 100644 doc/abrt-oops.conf.txt
+ create mode 100644 src/hooks/oops.conf
+
+diff --git a/doc/Makefile.am b/doc/Makefile.am
+index 0384429..a164234 100644
+--- a/doc/Makefile.am
++++ b/doc/Makefile.am
+@@ -20,6 +20,7 @@ MAN1_TXT += abrt-action-analyze-vmcore.txt
+ MAN5_TXT =
+ MAN5_TXT += abrt.conf.txt
+ MAN5_TXT += abrt-action-save-package-data.conf.txt
++MAN5_TXT += abrt-oops.conf.txt
+ 
+ MAN8_TXT =
+ MAN8_TXT += abrtd.txt abrt-dbus.txt
+diff --git a/doc/abrt-oops.conf.txt b/doc/abrt-oops.conf.txt
+new file mode 100644
+index 0000000..1e2a2ef
+--- /dev/null
++++ b/doc/abrt-oops.conf.txt
+@@ -0,0 +1,27 @@
++abrt-oops.conf(5)
++=================
++
++NAME
++----
++abrt-oops.conf - Configuration file for ABRT's Kernel Oops extractor
++
++DESCRIPTION
++-----------
++The configuration file consists of items in the format "Option = Value".
++The following items are recognized:
++
++DropNotReportableOopses = 'yes' / 'no'
++   If you want to see only reportable oopses, set to "yes".
++   Default is 'no': do not drop them.
++
++OnlyFatalMCE = 'yes' / 'no'
++   If you want to see only fatal MCEs, set to "yes".
++   Defaults is 'yes': detect only fatal ones.
++
++SEE ALSO
++--------
++abrt.conf(5)
++
++AUTHORS
++-------
++* ABRT team
+diff --git a/src/hooks/Makefile.am b/src/hooks/Makefile.am
+index 9a7cd10..399f6e1 100644
+--- a/src/hooks/Makefile.am
++++ b/src/hooks/Makefile.am
+@@ -8,7 +8,8 @@ pluginsconfdir = $(PLUGINS_CONF_DIR)
+ 
+ dist_pluginsconf_DATA = \
+     CCpp.conf \
+-    python.conf
++    python.conf \
++    oops.conf
+ 
+ sbin_SCRIPTS = \
+     abrt-install-ccpp-hook \
+diff --git a/src/hooks/oops.conf b/src/hooks/oops.conf
+new file mode 100644
+index 0000000..27d41fc
+--- /dev/null
++++ b/src/hooks/oops.conf
+@@ -0,0 +1,5 @@
++# Configuration file for Kernel oops hook
++
++# If you want to see only reportable oopses,
++# set to "yes".
++# DropNotReportableOopses = yes
+diff --git a/src/include/libabrt.h b/src/include/libabrt.h
+index a048d77..ebd1b6e 100644
+--- a/src/include/libabrt.h
++++ b/src/include/libabrt.h
+@@ -74,6 +74,8 @@ int daemon_is_ok();
+ char *koops_extract_version(const char *line);
+ #define kernel_tainted_short abrt_kernel_tainted_short
+ char *kernel_tainted_short(const char *kernel_bt);
++#define koops_hash_str_ext abrt_koops_hash_str_ext
++int koops_hash_str_ext(char hash_str[SHA1_RESULT_LEN*2 + 1], const char *oops_buf, int frame_count, int only_reliable);
+ #define koops_hash_str abrt_koops_hash_str
+ int koops_hash_str(char hash_str[SHA1_RESULT_LEN*2 + 1], const char *oops_buf);
+ #define koops_extract_oopses abrt_koops_extract_oopses
+diff --git a/src/lib/kernel.c b/src/lib/kernel.c
+index b95bbe4..ae225c6 100644
+--- a/src/lib/kernel.c
++++ b/src/lib/kernel.c
+@@ -366,7 +366,7 @@ next_line:
+     free(lines_info);
+ }
+ 
+-int koops_hash_str(char hash_str[SHA1_RESULT_LEN*2 + 1], const char *oops_buf)
++int koops_hash_str_ext(char hash_str[SHA1_RESULT_LEN*2 + 1], const char *oops_buf, int frame_count, int only_reliable)
+ {
+     struct strbuf *kernel_bt = strbuf_new();
+ 
+@@ -439,13 +439,13 @@ int koops_hash_str(char hash_str[SHA1_RESULT_LEN*2 + 1], const char *oops_buf)
+ 
+             /* skip symbols prefixed with "?" */
+             end_mem_block = skip_whitespace(end_mem_block);
+-            if (end_mem_block && *end_mem_block == '?')
++            if (only_reliable && end_mem_block && *end_mem_block == '?')
+                 goto skip_line;
+             /* strip out "+off/len" */
+             p = strchrnul(end_mem_block, '+');
+             /* append "func_name\n" */
+             strbuf_append_strf(kernel_bt, "%.*s\n", (int)(p - end_mem_block), end_mem_block);
+-            if (i == 5)
++            if (frame_count > 0 && i == frame_count)
+             {
+  done:
+                 free(line);
+@@ -497,6 +497,11 @@ int koops_hash_str(char hash_str[SHA1_RESULT_LEN*2 + 1], const char *oops_buf)
+     return bad;
+ }
+ 
++int koops_hash_str(char hash_str[SHA1_RESULT_LEN*2 + 1], const char *oops_buf)
++{
++    return koops_hash_str_ext(hash_str, oops_buf, /*frame count*/5, /*only reliable*/1);
++}
++
+ char *koops_extract_version(const char *linepointer)
+ {
+     if (strstr(linepointer, "Pid")
+diff --git a/src/plugins/Makefile.am b/src/plugins/Makefile.am
+index b76a1bb..b9a3cf1 100644
+--- a/src/plugins/Makefile.am
++++ b/src/plugins/Makefile.am
+@@ -109,6 +109,7 @@ abrt_action_analyze_oops_CPPFLAGS = \
+     -I$(srcdir)/../libreport/src/include/ -I$(srcdir)/../include \
+     -I$(srcdir)/../libreport/src/lib \
+     -I$(srcdir)/../lib \
++    -DPLUGINS_CONF_DIR=\"$(PLUGINS_CONF_DIR)\" \
+     $(GLIB_CFLAGS) \
+     $(LIBREPORT_CFLAGS) \
+     -D_GNU_SOURCE \
+diff --git a/src/plugins/abrt-action-analyze-oops.c b/src/plugins/abrt-action-analyze-oops.c
+index a936ea3..604b274 100644
+--- a/src/plugins/abrt-action-analyze-oops.c
++++ b/src/plugins/abrt-action-analyze-oops.c
+@@ -56,14 +56,46 @@ int main(int argc, char **argv)
+     if (!dd)
+         return 1;
+ 
++    map_string_h *settings = new_map_string();
++    load_conf_file(PLUGINS_CONF_DIR"/oops.conf", settings, /*skip key w/o values:*/ false);
++
+     char *oops = dd_load_text(dd, FILENAME_BACKTRACE);
+     char hash_str[SHA1_RESULT_LEN*2 + 1];
+     int bad = koops_hash_str(hash_str, oops);
+     free(oops);
+-
+     if (bad)
++    {
+         error_msg("Can't find a meaningful backtrace for hashing in '%s'", dump_dir_name);
+-    else
++
++        /* Do not drop such oopses by default. */
++        const char *value = g_hash_table_lookup(settings, "DropNotReportableOopses");
++        if (!value || !string_to_bool(value))
++        {
++            /* Let users know that they can configure ABRT to drop these oopses. */
++            log("Preserving oops '%s' because DropNotReportableOopses is '%s'",
++			dump_dir_name, value ? value : "(not set)");
++
++            dd_save_text(dd, FILENAME_NOT_REPORTABLE,
++            _("The backtrace does not contain enough meaningful function frames "
++              "to be reported. It is annoying but it does not necessary "
++              "signalize a problem with your computer. ABRT will not allow "
++              "you to create a report in a bug tracking system but you "
++              "can contact kernel maintainers via e-mail.")
++            );
++
++            /* Try to generate the hash once more with no limits. */
++            /* We need UUID file for the local duplicates look-up and DUPHASH */
++            /* file is also useful because user can force ABRT to report */
++            /* the oops into a bug tracking system (Bugzilla). */
++            bad = koops_hash_str_ext(hash_str, oops,
++                    /* use no frame count limit */-1,
++                    /* use every frame in stacktrace */0);
++
++            /* If even this attempt fails, we can drop the oops without any hesitation. */
++        }
++    }
++
++    if (!bad)
+     {
+         dd_save_text(dd, FILENAME_UUID, hash_str);
+         dd_save_text(dd, FILENAME_DUPHASH, hash_str);
+@@ -71,5 +103,7 @@ int main(int argc, char **argv)
+ 
+     dd_close(dd);
+ 
++    free_map_string(settings);
++
+     return bad;
+ }
+-- 
+1.8.3.1
+

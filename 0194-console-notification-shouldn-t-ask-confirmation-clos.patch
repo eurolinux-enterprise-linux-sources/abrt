@@ -1,0 +1,28 @@
+From e744de17e8011f558e7799fa4edc44c067035d8c Mon Sep 17 00:00:00 2001
+From: Jiri Moskovcak <jmoskovc@redhat.com>
+Date: Mon, 13 May 2013 07:59:31 +0200
+Subject: [ABRT EL6 PATCH 194/197] console notification shouldn't ask
+ confirmation - closes #652
+
+Signed-off-by: Jiri Moskovcak <jmoskovc@redhat.com>
+Signed-off-by: Jakub Filak <jfilak@redhat.com>
+---
+ src/cli/abrt-console-notification.sh | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/cli/abrt-console-notification.sh b/src/cli/abrt-console-notification.sh
+index 4082909..8e92d10 100755
+--- a/src/cli/abrt-console-notification.sh
++++ b/src/cli/abrt-console-notification.sh
+@@ -15,7 +15,7 @@ fi
+ # always update the lastnotification
+ if [ -f "$TMPPATH" ]; then
+     date +%s > "$TMPPATH"
+-    mv "$TMPPATH" "$SINCEFILE"
++    mv -f "$TMPPATH" "$SINCEFILE"
+ fi
+ 
+ abrt-cli status --since="$SINCE" 2> /dev/null
+-- 
+1.8.2.1
+

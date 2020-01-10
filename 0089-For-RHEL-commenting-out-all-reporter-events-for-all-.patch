@@ -1,0 +1,106 @@
+From 993d8a66e6fa1200eea3b5549a5f47ff81e85ed4 Mon Sep 17 00:00:00 2001
+From: Denys Vlasenko <vda.linux@googlemail.com>
+Date: Tue, 31 Jul 2012 16:50:36 +0200
+Subject: [PATCH 089/105] For RHEL, commenting out all reporter events for all
+ types of problems. Closes rhbz#828673 rhbz#810309
+
+libreport package installs rhtsupport_event.conf, which has this:
+"EVENT=report_RHTSupport      reporter-rhtsupport"
+
+Thus, all problems on RHEL will be by default reported to RHTS.
+
+Signed-off-by: Denys Vlasenko <vda.linux@googlemail.com>
+---
+ src/plugins/ccpp_event.conf         | 16 +++++-----------
+ src/plugins/ccpp_retrace_event.conf |  8 +-------
+ src/plugins/koops_event.conf        |  6 +++---
+ src/plugins/python_event.conf       |  6 +++---
+ src/plugins/vmcore_event.conf       |  4 ++--
+ 5 files changed, 14 insertions(+), 26 deletions(-)
+
+diff --git a/src/plugins/ccpp_event.conf b/src/plugins/ccpp_event.conf
+index 9ac32bb..831e6ec 100644
+--- a/src/plugins/ccpp_event.conf
++++ b/src/plugins/ccpp_event.conf
+@@ -33,17 +33,11 @@ EVENT=analyze_LocalGDB analyzer=CCpp
+         abrt-action-analyze-core --core=coredump -o build_ids &&
+         /usr/libexec/abrt-action-install-debuginfo-to-abrt-cache --size_mb=4096 &&
+         abrt-action-generate-backtrace &&
+-        abrt-action-analyze-backtrace &&
+-        (
+-            bug_id=$(reporter-bugzilla -h `cat duphash`) &&
+-            if test -n "$bug_id"; then
+-                abrt-bodhi -r -b $bug_id
+-            fi
+-        )
++        abrt-action-analyze-backtrace
+ 
+ 
+ # Bugzilla requires nonempty duphash
+-EVENT=report_Bugzilla analyzer=CCpp duphash!=
+-        abrt-dedup-client
+-        test -f component || abrt-action-save-package-data
+-        reporter-bugzilla -b -c /etc/libreport/plugins/bugzilla.conf
++#EVENT=report_Bugzilla analyzer=CCpp duphash!=
++#        abrt-dedup-client
++#        test -f component || abrt-action-save-package-data
++#        reporter-bugzilla -b -c /etc/libreport/plugins/bugzilla.conf
+diff --git a/src/plugins/ccpp_retrace_event.conf b/src/plugins/ccpp_retrace_event.conf
+index 60e53d7..893502f 100644
+--- a/src/plugins/ccpp_retrace_event.conf
++++ b/src/plugins/ccpp_retrace_event.conf
+@@ -1,9 +1,3 @@
+ EVENT=analyze_RetraceServer analyzer=CCpp
+         abrt-retrace-client batch --dir "$DUMP_DIR" --status-delay 10 &&
+-        abrt-action-analyze-backtrace &&
+-        (
+-            bug_id=$(reporter-bugzilla -h `cat duphash`) &&
+-            if test -n "$bug_id"; then
+-                abrt-bodhi -r -b $bug_id
+-            fi
+-        )
++        abrt-action-analyze-backtrace
+diff --git a/src/plugins/koops_event.conf b/src/plugins/koops_event.conf
+index 2fdccda..e8de75a 100644
+--- a/src/plugins/koops_event.conf
++++ b/src/plugins/koops_event.conf
+@@ -11,7 +11,7 @@ EVENT=post-create analyzer=Kerneloops
+ 
+ # report
+ #EVENT=report_Kerneloops analyzer=Kerneloops
+-        reporter-kerneloops
++#        reporter-kerneloops
+ 
+-EVENT=report_Bugzilla analyzer=Kerneloops
+-        reporter-bugzilla -b
++#EVENT=report_Bugzilla analyzer=Kerneloops
++#        reporter-bugzilla -b
+diff --git a/src/plugins/python_event.conf b/src/plugins/python_event.conf
+index bbd9517..0ee96b7 100644
+--- a/src/plugins/python_event.conf
++++ b/src/plugins/python_event.conf
+@@ -1,6 +1,6 @@
+ EVENT=post-create analyzer=Python
+         abrt-action-analyze-python
+ 
+-EVENT=report_Bugzilla analyzer=Python
+-        test -f component || abrt-action-save-package-data
+-        reporter-bugzilla -b -c /etc/libreport/plugins/bugzilla.conf
++#EVENT=report_Bugzilla analyzer=Python
++#        test -f component || abrt-action-save-package-data
++#        reporter-bugzilla -b -c /etc/libreport/plugins/bugzilla.conf
+diff --git a/src/plugins/vmcore_event.conf b/src/plugins/vmcore_event.conf
+index fdc391e..a62d413 100644
+--- a/src/plugins/vmcore_event.conf
++++ b/src/plugins/vmcore_event.conf
+@@ -10,5 +10,5 @@ EVENT=analyze_VMcore analyzer=vmcore
+         reporter-kerneloops
+ 
+ # report
+-EVENT=report_Kerneloops analyzer=vmcore
+-        reporter-kerneloops
++#EVENT=report_Kerneloops analyzer=vmcore
++#        reporter-kerneloops
+-- 
+1.7.11.2
+

@@ -1,0 +1,25 @@
+From ce297d1b37d88d8d3f398c7517b7868727e69afe Mon Sep 17 00:00:00 2001
+From: Jiri Moskovcak <jmoskovc@redhat.com>
+Date: Mon, 6 Aug 2012 13:26:58 +0200
+Subject: [PATCH 097/105] enable sos report auto-collecting
+
+---
+ src/daemon/abrt_event.conf | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/daemon/abrt_event.conf b/src/daemon/abrt_event.conf
+index 36d09ab..992eb92 100644
+--- a/src/daemon/abrt_event.conf
++++ b/src/daemon/abrt_event.conf
+@@ -80,7 +80,7 @@ EVENT=notify_dup package!= uid=
+ # Example: if you want to save sosreport immediately at the moment of a crash:
+ # (alternatively, you can add similar command to EVENT=analyze_foo's,
+ # if you would rather perform this collection later):
+-#EVENT=post-create
++EVENT=post-create
+         nice sosreport --tmp-dir "$DUMP_DIR" --batch \
+                 --only=anaconda --only=bootloader --only=devicemapper \
+                 --only=filesys --only=hardware --only=kernel --only=libraries \
+-- 
+1.7.11.2
+

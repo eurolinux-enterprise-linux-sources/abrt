@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<event>
+    <name>Retrace Server</name>
+    <description>Send core dump to remote retrace server for analysis</description>
+    <long-description>Uploads coredump to a server, which generates backtrace and returns it. Pros: no need for debuginfo downloads. Retrace server's database of debuginfos is more complete. Retrace server may generate better backtraces. Cons: coredump you upload contains all the data from the crashed program, including your private data, if any.</long-description>
+    <creates-items>backtrace</creates-items>
+    <options>
+        <option type="text" name="RETRACE_SERVER_URL">
+           <label>Retrace server URL</label>
+           <label xml:lang="or">ଅନୁସନ୍ଧାନ ସର୍ଭର URL</label>
+           <default-value>retrace.fedoraproject.org</default-value>
+           <allow-empty>no</allow-empty>
+           <description>Address of the retrace server</description>
+           <description xml:lang="ml">റീട്രെയിസ് സര്‍വറിന്റെ വിലാസം</description>
+       </option>
+       <option type="text" name="RETRACE_SERVER_INSECURE">
+           <label>Insecure</label>
+           <label xml:lang="fr">Non-securisée</label>
+           <label xml:lang="it">Insicuro</label>
+           <label xml:lang="ml">അസുരക്ഷിതം</label>
+           <label xml:lang="ru">Безопасность</label>
+           <allow-empty>yes</allow-empty>
+           <description>Whether or not to use insecure connection</description>
+           <description xml:lang="pa">ਅਸੁਰੱਖਿਅਤ ਕੁਨੈਕਸ਼ਨ ਵਰਤਣਾ ਹੈ ਜਾਂ ਨਹੀਂ</description>
+           <note-html>Write "insecure" to allow insecure connection &lt;a href="https://fedorahosted.org/abrt/wiki/AbrtRetraceServerInsecureConnection" &gt;(warning)&lt;/a&gt;</note-html>
+       </option>
+
+    </options>
+</event>

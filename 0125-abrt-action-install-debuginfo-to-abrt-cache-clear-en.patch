@@ -1,0 +1,56 @@
+From f34207d9856ac40dd8a884274ed0ec6788455e55 Mon Sep 17 00:00:00 2001
+From: Jiri Moskovcak <jmoskovc@redhat.com>
+Date: Tue, 15 Jan 2013 15:46:16 +0100
+Subject: [PATCH 125/125] abrt-action-install-debuginfo-to-abrt-cache: clear
+ entire environment rhbz#854011
+
+Just blacklisting a few variables proved to be not reliable enough.
+For example, we forgot to remove $PYTHONPATH.
+
+Signed-off-by: Denys Vlasenko <vda.linux@googlemail.com>
+---
+ .../abrt-action-install-debuginfo-to-abrt-cache.c   | 21 ++++++++++++++-------
+ 1 file changed, 14 insertions(+), 7 deletions(-)
+
+diff --git a/src/plugins/abrt-action-install-debuginfo-to-abrt-cache.c b/src/plugins/abrt-action-install-debuginfo-to-abrt-cache.c
+index 080de27..c145b57 100644
+--- a/src/plugins/abrt-action-install-debuginfo-to-abrt-cache.c
++++ b/src/plugins/abrt-action-install-debuginfo-to-abrt-cache.c
+@@ -65,13 +65,12 @@ int main(int argc, char **argv)
+         setreuid(u, u);
+         /* We are suid'ed! */
+         /* Prevent malicious user from messing up with suid'ed process: */
+-        /* Set safe PATH */
+-// TODO: honor configure --prefix here by adding it to PATH
+-// (otherwise abrt-action-install-debuginfo would fail to spawn abrt-action-trim-files):
+-        if (u == 0)
+-            putenv((char*) "PATH=/usr/sbin:/sbin:/usr/bin:/bin");
+-        else
+-            putenv((char*) "PATH=/usr/bin:/bin");
++#if 1
++// We forgot to sanitize PYTHONPATH. And who knows what else we forgot
++// (especially considering *future* new variables of this kind).
++// We switched to clearing entire environment instead:
++        clearenv();
++#else
+         /* Clear dangerous stuff from env */
+         static const char forbid[] =
+             "LD_LIBRARY_PATH" "\0"
+@@ -88,6 +87,14 @@ int main(int argc, char **argv)
+             unsetenv(p);
+             p += strlen(p) + 1;
+         } while (*p);
++#endif
++        /* Set safe PATH */
++// TODO: honor configure --prefix here by adding it to PATH
++// (otherwise abrt-action-install-debuginfo would fail to spawn abrt-action-trim-files):
++        if (u == 0)
++            putenv((char*) "PATH=/usr/sbin:/sbin:/usr/bin:/bin");
++        else
++            putenv((char*) "PATH=/usr/bin:/bin");
+     }
+ 
+     execvp(EXECUTABLE, argv);
+-- 
+1.8.0.1
+

@@ -1,0 +1,29 @@
+From 321e9ce679d7acc5fce75593ce5f088e0bddc116 Mon Sep 17 00:00:00 2001
+From: Nikola Pajkovsky <npajkovs@redhat.com>
+Date: Mon, 12 Mar 2012 16:05:45 +0100
+Subject: [PATCH 061/105] a-dump-oops: add spaces for multiline static string
+ concatenation
+
+Signed-off-by: Nikola Pajkovsky <npajkovs@redhat.com>
+---
+ src/plugins/abrt-dump-oops.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/src/plugins/abrt-dump-oops.c b/src/plugins/abrt-dump-oops.c
+index 60b84fa..48d7b91 100644
+--- a/src/plugins/abrt-dump-oops.c
++++ b/src/plugins/abrt-dump-oops.c
+@@ -172,8 +172,8 @@ static unsigned save_oops_to_dump_dir(GList *oops_list, unsigned oops_cnt)
+             {
+                 VERB1 log("Kernel is tainted '%s'", tainted_short);
+                 dd_save_text(dd, FILENAME_TAINTED_SHORT, tainted_short);
+-                const char *fmt = _("A kernel problem occurred, but your kernel has been"
+-                             "tainted (flags:%s). Kernel maintainers are unable to"
++                const char *fmt = _("A kernel problem occurred, but your kernel has been "
++                             "tainted (flags:%s). Kernel maintainers are unable to "
+                              "diagnose tainted reports.");
+ 
+                 char *reason = xasprintf(fmt, tainted_short);
+-- 
+1.7.11.2
+

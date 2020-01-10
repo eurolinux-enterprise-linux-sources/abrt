@@ -1,0 +1,115 @@
+#! /usr/bin/python
+#-*- coding: utf-8 -*-
+
+import os
+
+# abrt_v4 TABLE columns:
+UUID         = 0
+UID          = 1
+INFORMALL    = 2
+DUMPDIR_PATH = 3
+COUNT        = 4
+REPORTED     = 5
+TIME         = 6
+MESSAGE      = 7
+
+# abrt_v4_reportresult columns:
+#UUID     = 0
+#UID      = 1
+REPORTER = 2
+RESULT_MESSAGE  = 3
+
+def get_db_path():
+    path = "/var/spool/abrt/abrt-db"
+    try:
+        with open("/etc/abrt/plugins/SQLite3.conf") as f:
+            for line in f:
+                line = line.split('=', 1)
+                if len(line) == 2 and line[0].strip() == "DBPath":
+                    path = line[1].strip()
+    except Exception, ex:
+        pass
+    return path
+
+def get_url_from_text(text):
+    url_marks = ["http://", "https://", "ftp://", "ftps://", "file://"]
+    lines = text.split('\n')
+    url = ""
+    for mark in url_marks:
+        for line in lines:
+            last_mark = line.find(mark)
+            if last_mark != -1:
+                url_end = line.find(' ',last_mark)
+                if url_end == -1:
+                    url_end = len(line)
+                url = "URL=" + line[last_mark:url_end]
+    return url
+
+def format_reported_to(reported_to):
+    reporter = reported_to[REPORTER]
+    url = get_url_from_text(reported_to[RESULT_MESSAGE])
+    if not url:
+        url = reported_to[RESULT_MESSAGE]
+    return reporter + ": " + url
+
+if __name__ == "__main__":
+    try:
+        from sqlite3 import dbapi2 as sqlite
+        db = sqlite.connect(get_db_path())
+        crashes = db.execute("SELECT * FROM abrt_v4")
+        # abrt_v4 TABLE columns:
+        # UUID | UID | INFORMALL | DUMPDIR_PATH | COUNT | REPORTED | TIME | MESSAGE
+        for crash in crashes:
+            # abrt_v4_reportresult columns:
+            # UUID | UID | REPORTER | MESSAGE
+            report_results = db.execute("SELECT * FROM abrt_v4_reportresult WHERE UUID='%s'" % crash[UUID])
+
+            # save count from db to file
+            count_file = "%s/count" % crash[DUMPDIR_PATH]
+            # don't overwrite
+            if not os.path.exists(count_file):
+                try:
+                    fout = open(count_file, "w")
+                    fout.write(str(crash[COUNT]))
+                    fout.close()
+                except Exception, ex:
+                    # silently ignore errors -> probably stalled db, but we can't
+                    # do much about it, so it's better to not polute the rpm output
+                    pass
+
+            # save uuid from db to file
+            uuid_file = "%s/uuid" % crash[DUMPDIR_PATH]
+            # don't overwrite
+            if not os.path.exists(uuid_file):
+                try:
+                    fout = open(uuid_file, "w")
+                    fout.write(str(crash[UUID]))
+                    fout.close()
+                except Exception, ex:
+                    # silently ignore errors -> probably stalled db, but we can't
+                    # do much about it, so it's better to not polute the rpm output
+                    pass
+
+            results = report_results.fetchall()
+            if results:
+                # save report results from db to file
+                reported_to_file = "%s/reported_to" % crash[DUMPDIR_PATH]
+                if not os.path.exists(reported_to_file):
+                    try:
+                        fout = open(reported_to_file, "w")
+                    except Exception, ex:
+                        # silently ignore errors -> probably stalled db, but we can't
+                        # do much about it, so it's better to not polute the rpm output
+                        continue
+
+                    for report_result in results:
+                        # print "\t", format_reported_to(report_result)
+                        # I know, it adds a '\n' to the end, but it's not a problem
+                        fout.write("%s\n" % format_reported_to(report_result))
+                    fout.close()
+        db.close()
+    except Exception, ex:
+        # in case of any unhandled error, just ignore it, the worst, what
+        # can happen is that the old reports are marked as unreported
+        #print ex
+        pass

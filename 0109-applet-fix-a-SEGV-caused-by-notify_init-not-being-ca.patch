@@ -1,0 +1,61 @@
+From 3059a644d6593c0657573b401eb700f9f7629dd4 Mon Sep 17 00:00:00 2001
+From: Denys Vlasenko <vda.linux@googlemail.com>
+Date: Mon, 13 Aug 2012 14:53:19 +0200
+Subject: [PATCH 109/112] applet: fix a SEGV caused by notify_init() not being
+ called
+
+Signed-off-by: Denys Vlasenko <vda.linux@googlemail.com>
+---
+ src/applet/applet.c | 16 +++++++++++++---
+ 1 file changed, 13 insertions(+), 3 deletions(-)
+
+diff --git a/src/applet/applet.c b/src/applet/applet.c
+index b6178ec..2d6514f 100644
+--- a/src/applet/applet.c
++++ b/src/applet/applet.c
+@@ -502,12 +502,24 @@ static void show_icon(void)
+ #endif
+ }
+ 
++static void call_notify_init(void)
++{
++    static bool inited = 0;
++    if (inited)
++        return;
++    inited = 1;
++
++    notify_init("ABRT");
++}
++
+ #if !defined(NOTIFY_VERSION_MINOR) || (NOTIFY_VERSION_MAJOR == 0 && NOTIFY_VERSION_MINOR >= 6)
+ static gboolean server_has_persistence(void)
+ {
+     GList *caps;
+     GList *l;
+ 
++    call_notify_init();
++
+     caps = notify_get_server_caps();
+     if (caps == NULL)
+     {
+@@ -522,7 +534,7 @@ static gboolean server_has_persistence(void)
+     return (l != NULL);
+ }
+ #else
+-# define server_has_persistence() false
++# define server_has_persistence() call_notify_init()
+ #endif
+ 
+ static void init_applet(void)
+@@ -558,8 +570,6 @@ static void init_applet(void)
+         g_signal_connect(G_OBJECT(ap_status_icon), "popup_menu", G_CALLBACK(on_menu_popup_cb), NULL);
+         ap_menu = create_menu();
+     }
+-
+-    notify_init("ABRT");
+ }
+ 
+ static void Crash(DBusMessage* signal)
+-- 
+1.7.11.4
+

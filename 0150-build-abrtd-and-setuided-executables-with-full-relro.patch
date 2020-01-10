@@ -1,0 +1,46 @@
+From 1b3d80e53bba322eb9374a0b338c898b73b5ac22 Mon Sep 17 00:00:00 2001
+From: Jiri Moskovcak <jmoskovc@redhat.com>
+Date: Thu, 25 Apr 2013 17:36:38 +0200
+Subject: [ABRT EL6 PATCH 150/197] build abrtd and setuided executables with
+ full relro rhbz#812284
+
+Signed-off-by: Jiri Moskovcak <jmoskovc@redhat.com>
+
+Conflicts:
+	src/daemon/Makefile.am
+---
+ src/daemon/Makefile.am  | 3 ++-
+ src/plugins/Makefile.am | 3 ++-
+ 2 files changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/src/daemon/Makefile.am b/src/daemon/Makefile.am
+index 8d54afb..8811fe3 100644
+--- a/src/daemon/Makefile.am
++++ b/src/daemon/Makefile.am
+@@ -27,7 +27,8 @@ abrtd_CPPFLAGS = \
+     -D_GNU_SOURCE \
+     -Wall -Wwrite-strings \
+     -Werror \
+-    -fPIE -Wl,-z,relro,now
++    -fPIE \
++    -Wl,-z,relro -Wl,-z,now
+ abrtd_LDADD = \
+     ../lib/libabrt.la \
+     $(LIBREPORT_LIBS)
+diff --git a/src/plugins/Makefile.am b/src/plugins/Makefile.am
+index bebe2cd..f6d6c28 100644
+--- a/src/plugins/Makefile.am
++++ b/src/plugins/Makefile.am
+@@ -190,7 +190,8 @@ abrt_action_install_debuginfo_to_abrt_cache_CPPFLAGS = \
+     -D_GNU_SOURCE \
+     $(LIBREPORT_CFLAGS) \
+     -Wall -Wwrite-strings \
+-    -fPIE -Wl,-z,relro,now
++    -fPIE \
++    -Wl,-z,relro -Wl,-z,now
+ abrt_action_install_debuginfo_to_abrt_cache_LDADD = \
+      $(LIBREPORT_LIBS) \
+      ../lib/libabrt.la
+-- 
+1.8.2.1
+

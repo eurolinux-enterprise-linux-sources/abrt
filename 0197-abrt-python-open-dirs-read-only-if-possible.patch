@@ -1,0 +1,62 @@
+From 2e351b1fb2062d78ed4d33728c31e58a89c5b801 Mon Sep 17 00:00:00 2001
+From: Richard Marko <rmarko@redhat.com>
+Date: Tue, 21 May 2013 13:34:42 +0200
+Subject: [ABRT EL6 PATCH 197/197] abrt-python: open dirs read-only if possible
+
+list and get_item functions now pass
+DD_OPEN_READONLY to dd_opendir.
+
+Signed-off-by: Richard Marko <rmarko@redhat.com>
+---
+ src/python-problem/problem/proxies.py | 19 ++++++++++---------
+ 1 file changed, 10 insertions(+), 9 deletions(-)
+
+diff --git a/src/python-problem/problem/proxies.py b/src/python-problem/problem/proxies.py
+index 1bd89a4..e33973c 100644
+--- a/src/python-problem/problem/proxies.py
++++ b/src/python-problem/problem/proxies.py
+@@ -144,8 +144,12 @@ class FsProxy(object):
+         ddir.close()
+         return ret
+ 
+-    def _open_ddir(self, dump_dir):
+-        ddir = report.dd_opendir(dump_dir)
++    def _open_ddir(self, dump_dir, readonly=False):
++        flags = 0
++        if readonly:
++            flags |= report.DD_OPEN_READONLY
++
++        ddir = report.dd_opendir(dump_dir, flags)
+         if not ddir:
+             raise problem.exception.InvalidProblem(
+                 'Can\'t open directory: {0}'.format(dump_dir))
+@@ -153,14 +157,11 @@ class FsProxy(object):
+         return ddir
+ 
+     def get_item(self, dump_dir, name):
+-        ddir = self._open_ddir(dump_dir)
++        ddir = self._open_ddir(dump_dir, readonly=True)
+ 
+         flags = (report.DD_FAIL_QUIETLY_EACCES |
+-            report.DD_FAIL_QUIETLY_ENOENT |
+-            report.DD_LOAD_TEXT_RETURN_NULL_ON_FAILURE)
+-
+-        if hasattr(report, 'DD_OPEN_READONLY'):
+-            flags |= report.DD_OPEN_READONLY
++                 report.DD_FAIL_QUIETLY_ENOENT |
++                 report.DD_LOAD_TEXT_RETURN_NULL_ON_FAILURE)
+ 
+         val = ddir.load_text(name, flags)
+ 
+@@ -199,7 +200,7 @@ class FsProxy(object):
+                              dir_stat.st_gid != gid):
+                 continue
+ 
+-            ddir = report.dd_opendir(dump_dir)
++            ddir = report.dd_opendir(dump_dir, report.DD_OPEN_READONLY)
+             if ddir:
+                 ddir.close()
+                 yield dump_dir
+-- 
+1.8.2.1
+

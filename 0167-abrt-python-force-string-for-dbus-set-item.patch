@@ -1,0 +1,25 @@
+From 8192a4b478eef4121721457c6d7691f20e43cfd6 Mon Sep 17 00:00:00 2001
+From: Richard Marko <rmarko@redhat.com>
+Date: Tue, 11 Dec 2012 13:36:01 +0100
+Subject: [ABRT EL6 PATCH 167/197] abrt-python: force string for dbus set item
+
+---
+ src/python-problem/problem/proxies.py | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/python-problem/problem/proxies.py b/src/python-problem/problem/proxies.py
+index 5db4002..7abd07e 100644
+--- a/src/python-problem/problem/proxies.py
++++ b/src/python-problem/problem/proxies.py
+@@ -63,7 +63,7 @@ class DBusProxy(object):
+         return str(val[name])
+ 
+     def set_item(self, dump_dir, name, value):
+-        return self._dbus_call('SetElement', dump_dir, name, value)
++        return self._dbus_call('SetElement', dump_dir, name, str(value))
+ 
+     def del_item(self, dump_dir, name):
+         return self._dbus_call('DeleteElement', dump_dir, name)
+-- 
+1.8.2.1
+

@@ -1,0 +1,31 @@
+From f14da9a5842cebb495f396ed23c579a3cc3a09e6 Mon Sep 17 00:00:00 2001
+From: Denys Vlasenko <dvlasenk@redhat.com>
+Date: Wed, 6 Mar 2013 15:25:46 +0100
+Subject: [ABRT EL6 PATCH 140/197] abrt-gui: fix broken help URL. Closes
+ rhbz#903195
+
+Signed-off-by: Denys Vlasenko <dvlasenk@redhat.com>
+---
+ src/gui-gtk/main.c | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/src/gui-gtk/main.c b/src/gui-gtk/main.c
+index a52e038..08b3484 100644
+--- a/src/gui-gtk/main.c
++++ b/src/gui-gtk/main.c
+@@ -33,8 +33,10 @@
+ static void scan_dirs_and_add_to_dirlist(void);
+ 
+ 
+-static const char help_uri[] = "http://docs.redhat.com/docs/en-US/"
+-    "Red_Hat_Enterprise_Linux/6/html/Deployment_Guide/";
++static const char help_uri[] =
++//Was broken link: http://docs.redhat.com/docs/en-US/Red_Hat_Enterprise_Linux/6/html/Deployment_Guide/
++"https://access.redhat.com/knowledge/docs/en-US/Red_Hat_Enterprise_Linux/6/html-single/Deployment_Guide/index.html#ch-abrt";
++
+ 
+ static GtkListStore *s_dumps_list_store;
+ static GtkListStore *s_reported_dumps_list_store;
+-- 
+1.8.2.1
+

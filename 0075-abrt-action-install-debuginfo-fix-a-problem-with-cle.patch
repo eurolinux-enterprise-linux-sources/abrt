@@ -1,0 +1,39 @@
+From 111d58e9a1b6847ce5eecf68dbc2a09f39e34812 Mon Sep 17 00:00:00 2001
+From: Denys Vlasenko <vda.linux@googlemail.com>
+Date: Tue, 3 Apr 2012 15:56:06 +0200
+Subject: [PATCH 075/105] abrt-action-install-debuginfo: fix a problem with
+ clean_up() not imported
+
+Hopefully fixes the foloowing:
+
+Analyzing coredump 'coredump'
+Coredump references 132 debuginfo files, 102 of them are not installed
+Setting up yum repositories
+Traceback (most recent call last):
+  File "/usr/lib/python2.7/site-packages/urlgrabber/grabber.py", line 1134, in _hdr_retrieve
+    def _hdr_retrieve(self, buf):
+  File "/usr/bin/abrt-action-install-debuginfo", line 45, in sigterm_handler
+    clean_up()
+NameError: global name 'clean_up' is not defined
+
+Signed-off-by: Denys Vlasenko <vda.linux@googlemail.com>
+---
+ src/plugins/abrt-action-install-debuginfo.in | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/plugins/abrt-action-install-debuginfo.in b/src/plugins/abrt-action-install-debuginfo.in
+index 280d815..a6c39f3 100644
+--- a/src/plugins/abrt-action-install-debuginfo.in
++++ b/src/plugins/abrt-action-install-debuginfo.in
+@@ -13,7 +13,7 @@ import reportclient
+ from subprocess import Popen, PIPE
+ from reportclient import _, verbose, log, log1, log2, set_verbosity, error_msg_and_die, error_msg
+ import time
+-from reportclient.debuginfo import DebugInfoDownload, filter_installed_debuginfos, build_ids_to_path
++from reportclient.debuginfo import DebugInfoDownload, filter_installed_debuginfos, build_ids_to_path, clean_up
+ 
+ # everything was ok
+ RETURN_OK = 0
+-- 
+1.7.11.2
+

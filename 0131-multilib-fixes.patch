@@ -1,0 +1,39 @@
+From 76323abe0f038abe909d8804fbadb37436f1878e Mon Sep 17 00:00:00 2001
+From: Jiri Moskovcak <jmoskovc@redhat.com>
+Date: Wed, 23 Jan 2013 17:09:41 +0100
+Subject: [PATCH 131/131] multilib fixes
+
+Conflicts:
+	src/hooks/Makefile.am
+---
+ abrt.spec.in          | 2 +-
+ src/hooks/Makefile.am | 8 ++++++--
+ 2 files changed, 7 insertions(+), 3 deletions(-)
+
+diff --git a/src/hooks/Makefile.am b/src/hooks/Makefile.am
+index 6f14073..a3614eb 100644
+--- a/src/hooks/Makefile.am
++++ b/src/hooks/Makefile.am
+@@ -1,4 +1,5 @@
+ confdir = $(CONF_DIR)
++pyhookdir = $(pyexecdir)
+ 
+ dist_conf_DATA = \
+     abrt-harvest-vmcore.conf
+@@ -32,8 +33,11 @@ abrt_hook_ccpp_LDADD = \
+     ../lib/libabrt.la \
+     $(LIBREPORT_LIBS)
+ 
+-python_PYTHON = abrt.pth abrt_exception_handler.py
+-EXTRA_DIST = abrt_exception_handler.py.in abrt-install-ccpp-hook abrt-harvest-vmcore
++pyhook_PYTHON = abrt_exception_handler.py
++python_PYTHON = abrt.pth
++EXTRA_DIST = abrt_exception_handler.py.in \
++	abrt-install-ccpp-hook.in \
++	abrt-harvest-vmcore.in
+ 
+ CLEANFILES := $(notdir $(wildcard *~)) $(notdir $(wildcard *\#)) $(notdir $(wildcard \.\#*)) $(notdir $(wildcard *.pyc)) $(man1_MANS)
+ 
+-- 
+1.8.1
+

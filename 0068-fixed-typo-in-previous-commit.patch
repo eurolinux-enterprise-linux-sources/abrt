@@ -1,0 +1,37 @@
+From ce95903902e4127de4feb7d0f509a2da78aa94e7 Mon Sep 17 00:00:00 2001
+From: Jiri <moskovcak@gmail.com>
+Date: Mon, 19 Mar 2012 15:14:50 +0100
+Subject: [PATCH 068/105] fixed typo in previous commit
+
+---
+ src/plugins/collect_Smolt.xml.in           | 2 +-
+ src/plugins/collect_xsession_errors.xml.in | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/src/plugins/collect_Smolt.xml.in b/src/plugins/collect_Smolt.xml.in
+index 4d298f0..43c7e50 100644
+--- a/src/plugins/collect_Smolt.xml.in
++++ b/src/plugins/collect_Smolt.xml.in
+@@ -1,6 +1,6 @@
+ <?xml version="1.0" encoding="UTF-8" ?>
+ <event>
+-    <_name>Collect Smolt profile</name_>
++    <_name>Collect Smolt profile</_name>
+     <_description>Save your computer's hardware profile information</_description>
+     <_long-description>
+     Runs smoltSendProfile -p and saves its output as 'smolt_data' element.
+diff --git a/src/plugins/collect_xsession_errors.xml.in b/src/plugins/collect_xsession_errors.xml.in
+index 7efe3ea..1d5e3e1 100644
+--- a/src/plugins/collect_xsession_errors.xml.in
++++ b/src/plugins/collect_xsession_errors.xml.in
+@@ -1,6 +1,6 @@
+ <?xml version="1.0" encoding="UTF-8" ?>
+ <event>
+-    <_name>Collect .xsession-errors</name_>
++    <_name>Collect .xsession-errors</_name>
+     <_description>Save relevant lines from ~/.xsession-errors file</_description>
+     <_long-description>
+     Scans through ~/.xsession-errors file and saves those lines which contain executable's name.
+-- 
+1.7.11.2
+

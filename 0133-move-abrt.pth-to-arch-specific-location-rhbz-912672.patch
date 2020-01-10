@@ -1,0 +1,27 @@
+From f09c7f628dd707af0986ef79abdbfa4cf060e997 Mon Sep 17 00:00:00 2001
+From: Jiri Moskovcak <jmoskovc@redhat.com>
+Date: Fri, 22 Feb 2013 17:24:34 +0100
+Subject: [ABRT EL6 PATCH 133/197] move abrt.pth to arch specific location
+ rhbz#912672
+
+---
+ src/hooks/Makefile.am | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
+
+diff --git a/src/hooks/Makefile.am b/src/hooks/Makefile.am
+index e5cae80..9a7cd10 100644
+--- a/src/hooks/Makefile.am
++++ b/src/hooks/Makefile.am
+@@ -33,8 +33,7 @@ abrt_hook_ccpp_LDADD = \
+     ../lib/libabrt.la \
+     $(LIBREPORT_LIBS)
+
+-pyhook_PYTHON = abrt_exception_handler.py
+-python_PYTHON = abrt.pth
++pyhook_PYTHON = abrt_exception_handler.py abrt.pth
+ EXTRA_DIST = abrt_exception_handler.py.in \
+ 	abrt-install-ccpp-hook.in \
+ 	abrt-harvest-vmcore.in
+--
+1.8.2.1
+

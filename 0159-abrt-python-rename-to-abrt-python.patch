@@ -1,0 +1,93 @@
+From effaa2bf71cc2be623adf5bd8ac132496c39a802 Mon Sep 17 00:00:00 2001
+From: Richard Marko <rmarko@redhat.com>
+Date: Wed, 5 Dec 2012 18:18:30 +0100
+Subject: [ABRT EL6 PATCH 159/197] abrt-python: rename to abrt-python
+
+---
+ src/python-problem/doc/conf.py   | 16 ++++++++--------
+ src/python-problem/doc/index.rst |  6 +++---
+ 2 files changed, 11 insertions(+), 11 deletions(-)
+
+diff --git a/src/python-problem/doc/conf.py b/src/python-problem/doc/conf.py
+index 27c81fd..b2f335f 100644
+--- a/src/python-problem/doc/conf.py
++++ b/src/python-problem/doc/conf.py
+@@ -40,7 +40,7 @@ source_suffix = '.rst'
+ master_doc = 'index'
+ 
+ # General information about the project.
+-project = u'python-problem'
++project = u'abrt-python'
+ copyright = u'2012, Richard Marko'
+ 
+ # The version info for the project you're documenting, acts as replacement for
+@@ -120,7 +120,7 @@ html_theme = 'default'
+ # Add any paths that contain custom static files (such as style sheets) here,
+ # relative to this directory. They are copied after the builtin static files,
+ # so a file named "default.css" will overwrite the builtin "default.css".
+-html_static_path = ['_static']
++#html_static_path = ['_static']
+ 
+ # If not '', a 'Last updated on:' timestamp is inserted at every page bottom,
+ # using the given strftime format.
+@@ -164,7 +164,7 @@ html_static_path = ['_static']
+ #html_file_suffix = None
+ 
+ # Output file base name for HTML help builder.
+-htmlhelp_basename = 'python-problemdoc'
++htmlhelp_basename = 'abrt-pythondoc'
+ 
+ 
+ # -- Options for LaTeX output --------------------------------------------------
+@@ -183,7 +183,7 @@ latex_elements = {
+ # Grouping the document tree into LaTeX files. List of tuples
+ # (source start file, target name, title, author, documentclass [howto/manual]).
+ latex_documents = [
+-  ('index', 'python-problem.tex', u'python-problem Documentation',
++  ('index', 'abrt-python.tex', u'abrt-python Documentation',
+    u'Richard Marko', 'manual'),
+ ]
+ 
+@@ -213,8 +213,8 @@ latex_documents = [
+ # One entry per manual page. List of tuples
+ # (source start file, name, description, authors, manual section).
+ man_pages = [
+-    ('index', 'python-problem', u'python-problem Documentation',
+-     [u'Richard Marko'], 1)
++    ('index', 'abrt-python', u'abrt-python Documentation',
++     [u'Richard Marko'], 5)
+ ]
+ 
+ # If true, show URL addresses after external links.
+@@ -227,8 +227,8 @@ man_pages = [
+ # (source start file, target name, title, author,
+ #  dir menu entry, description, category)
+ texinfo_documents = [
+-  ('index', 'python-problem', u'python-problem Documentation',
+-   u'Richard Marko', 'python-problem', 'One line description of project.',
++  ('index', 'abrt-python', u'abrt-python Documentation',
++   u'Richard Marko', 'abrt-python', 'One line description of project.',
+    'Miscellaneous'),
+ ]
+ 
+diff --git a/src/python-problem/doc/index.rst b/src/python-problem/doc/index.rst
+index 3c81b9d..a69b219 100644
+--- a/src/python-problem/doc/index.rst
++++ b/src/python-problem/doc/index.rst
+@@ -1,10 +1,10 @@
+-.. python-problem documentation master file, created by
++.. abrt-python documentation master file, created by
+    sphinx-quickstart on Tue Dec  4 12:03:58 2012.
+    You can adapt this file completely to your liking, but it should at least
+    contain the root `toctree` directive.
+ 
+-python-problem
+-==============
++abrt-python
++===========
+ 
+ High-level API for querying, creating and manipulating
+ problems handled by `ABRT <https://fedorahosted.org/abrt/>`_ 
+-- 
+1.8.2.1
+

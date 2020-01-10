@@ -1,0 +1,23 @@
+From 690e45a3b2fbba4cec84026529daf8bb1694cdf9 Mon Sep 17 00:00:00 2001
+From: Richard Marko <rmarko@redhat.com>
+Date: Thu, 17 Jan 2013 19:40:01 +0100
+Subject: [ABRT EL6 PATCH 176/197] abrt-python: use filesystem proxy as a
+ fallback
+
+---
+ src/python-problem/problem/proxies.py | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/python-problem/problem/proxies.py b/src/python-problem/problem/proxies.py
+index 8a8d39b..50f762f 100644
+--- a/src/python-problem/problem/proxies.py
++++ b/src/python-problem/problem/proxies.py
+@@ -197,4 +197,4 @@ def get_proxy():
+     except ImportError:
+         logging.debug('DBus not found')
+ 
+-    return SocketProxy()
++    return FsProxy()
+-- 
+1.8.2.1
+

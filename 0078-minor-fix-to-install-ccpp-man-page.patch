@@ -1,0 +1,25 @@
+From 498bdafaa4f3aa279ea059cb7cc4e91510b70fd3 Mon Sep 17 00:00:00 2001
+From: Jiri Moskovcak <jmoskovc@redhat.com>
+Date: Thu, 5 Apr 2012 15:06:20 +0200
+Subject: [PATCH 078/105] minor fix to install-ccpp man page
+
+---
+ doc/abrt-install-ccpp-hook.txt | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/doc/abrt-install-ccpp-hook.txt b/doc/abrt-install-ccpp-hook.txt
+index 5df7ea0..8fcffe2 100644
+--- a/doc/abrt-install-ccpp-hook.txt
++++ b/doc/abrt-install-ccpp-hook.txt
+@@ -22,7 +22,7 @@ install::
+ uninstall::
+    Uninstall coredump handler.
+ 
+-status::
++is-installed::
+    Returns 0 if handler is installed, otherwise 1.
+ 
+ AUTHORS
+-- 
+1.7.11.2
+

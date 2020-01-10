@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<event>
+    <name>Analyze VM core</name>
+    <description>Install kernel debuginfo packages, generate kernel log and oops message</description>
+    <description xml:lang="es">Instala paquetes de información de depuración del kernel, genera registro de kernel y mensajes de alerta</description>
+    <description xml:lang="zh_TW">安裝內核 debuginfo 套件，產生內核紀錄與 oops 訊息</description>
+    <long-description>Needs to install kernel debuginfo packages, which might take significant time, and take up disk space.</long-description>
+    <creates-items>backtrace</creates-items>
+</event>

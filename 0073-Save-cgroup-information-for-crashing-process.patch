@@ -1,0 +1,32 @@
+From fea4cb69b46715a428dc428291626a0a4a5b846d Mon Sep 17 00:00:00 2001
+From: Richard Marko <rmarko@redhat.com>
+Date: Mon, 26 Mar 2012 13:54:09 +0200
+Subject: [PATCH 073/105] Save cgroup information for crashing process
+
+Stored in /proc/<pid>/cgroup
+
+Signed-off-by: Richard Marko <rmarko@redhat.com>
+Signed-off-by: Nikola Pajkovsky <npajkovs@redhat.com>
+---
+ src/hooks/abrt-hook-ccpp.c | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/src/hooks/abrt-hook-ccpp.c b/src/hooks/abrt-hook-ccpp.c
+index 83dbf9f..1a918c8 100644
+--- a/src/hooks/abrt-hook-ccpp.c
++++ b/src/hooks/abrt-hook-ccpp.c
+@@ -713,6 +713,11 @@ int main(int argc, char** argv)
+         copy_file(source_filename, dest_filename, 0640);
+         IGNORE_RESULT(chown(dest_filename, dd->dd_uid, dd->dd_gid));
+ 
++        strcpy(source_filename + source_base_ofs, "cgroup");
++        strcpy(dest_base, FILENAME_CGROUP);
++        copy_file(source_filename, dest_filename, 0640);
++        IGNORE_RESULT(chown(dest_filename, dd->dd_uid, dd->dd_gid));
++
+         strcpy(dest_base, FILENAME_OPEN_FDS);
+         if (dump_fd_info(dest_filename, source_filename, source_base_ofs))
+             IGNORE_RESULT(chown(dest_filename, dd->dd_uid, dd->dd_gid));
+-- 
+1.7.11.2
+

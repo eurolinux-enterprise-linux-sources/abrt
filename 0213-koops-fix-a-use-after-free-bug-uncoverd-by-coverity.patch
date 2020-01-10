@@ -1,0 +1,46 @@
+From 0eba5c7203032dc9097e0dbb6c3672234d560408 Mon Sep 17 00:00:00 2001
+From: Jakub Filak <jfilak@redhat.com>
+Date: Fri, 1 Aug 2014 16:01:28 +0200
+Subject: [ABRT PATCH 213/213] koops: fix a use-after-free bug uncoverd by
+ coverity
+
+Related: #1084467
+
+Signed-off-by: Jakub Filak <jfilak@redhat.com>
+---
+ src/plugins/abrt-action-analyze-oops.c | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/src/plugins/abrt-action-analyze-oops.c b/src/plugins/abrt-action-analyze-oops.c
+index 604b274..d7acb9f 100644
+--- a/src/plugins/abrt-action-analyze-oops.c
++++ b/src/plugins/abrt-action-analyze-oops.c
+@@ -62,7 +62,6 @@ int main(int argc, char **argv)
+     char *oops = dd_load_text(dd, FILENAME_BACKTRACE);
+     char hash_str[SHA1_RESULT_LEN*2 + 1];
+     int bad = koops_hash_str(hash_str, oops);
+-    free(oops);
+     if (bad)
+     {
+         error_msg("Can't find a meaningful backtrace for hashing in '%s'", dump_dir_name);
+@@ -73,7 +72,7 @@ int main(int argc, char **argv)
+         {
+             /* Let users know that they can configure ABRT to drop these oopses. */
+             log("Preserving oops '%s' because DropNotReportableOopses is '%s'",
+-			dump_dir_name, value ? value : "(not set)");
++             	       dump_dir_name, value ? value : "(not set)");
+ 
+             dd_save_text(dd, FILENAME_NOT_REPORTABLE,
+             _("The backtrace does not contain enough meaningful function frames "
+@@ -95,6 +94,8 @@ int main(int argc, char **argv)
+         }
+     }
+ 
++    free(oops);
++
+     if (!bad)
+     {
+         dd_save_text(dd, FILENAME_UUID, hash_str);
+-- 
+1.8.3.1
+

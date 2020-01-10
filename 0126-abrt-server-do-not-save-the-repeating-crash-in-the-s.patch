@@ -1,0 +1,190 @@
+From d8755ddfe9e76fe26f5b6696c961792fde6060a6 Mon Sep 17 00:00:00 2001
+From: Denys Vlasenko <vda.linux@googlemail.com>
+Date: Mon, 21 Jan 2013 17:28:29 +0100
+Subject: [PATCH 126/130] abrt-server: do not save the repeating crash in the
+ same executable. Closes rhbz#826924
+
+It is a backport of commit d73709e5066cf39d93f012c6b4dac063c987d722.
+
+After this change, the following happens when the same
+python script fails in rapid succession:
+
+    abrtd: New client connected
+    abrt-server[6294]: Not saving repeating crash in '/usr/bin/fedpkg'
+
+Signed-off-by: Denys Vlasenko <vda.linux@googlemail.com>
+---
+ src/daemon/abrt-server.c          |    7 ++++
+ src/hooks/abrt-hook-ccpp.c        |   33 +++-----------------
+ src/include/libabrt.h             |    2 +
+ src/lib/Makefile.am               |    3 +-
+ src/lib/check_recent_crash_file.c |   60 +++++++++++++++++++++++++++++++++++++
+ 5 files changed, 76 insertions(+), 29 deletions(-)
+ create mode 100644 src/lib/check_recent_crash_file.c
+
+diff --git a/src/daemon/abrt-server.c b/src/daemon/abrt-server.c
+index dc8329e..602a41a 100644
+--- a/src/daemon/abrt-server.c
++++ b/src/daemon/abrt-server.c
+@@ -437,6 +437,13 @@ static int perform_http_xact(void)
+ 
+     /* Write out the crash dump. Don't let alarm to interrupt here */
+     alarm(0);
++
++    char *last_file = concat_path_file(g_settings_dump_location, "last-via-server");
++    int repeating_crash = check_recent_crash_file(last_file, executable);
++    free(last_file);
++    if (repeating_crash) /* Only pretend that we saved it */
++        return 0; /* ret is 0: "success" */
++
+     return create_debug_dump();
+ }
+ 
+diff --git a/src/hooks/abrt-hook-ccpp.c b/src/hooks/abrt-hook-ccpp.c
+index 6f9c57b..35c7688 100644
+--- a/src/hooks/abrt-hook-ccpp.c
++++ b/src/hooks/abrt-hook-ccpp.c
+@@ -445,8 +445,6 @@ static int create_or_die(const char *filename)
+ 
+ int main(int argc, char** argv)
+ {
+-    struct stat sb;
+-
+     /* Kernel starts us with all fd's closed.
+      * But it's dangerous:
+      * fprintf(stderr) can dump messages into random fds, etc.
+@@ -625,33 +623,12 @@ int main(int argc, char** argv)
+      * if they happen too often. Else, write new marker value.
+      */
+     snprintf(path, sizeof(path), "%s/last-ccpp", g_settings_dump_location);
+-    fd = open(path, O_RDWR | O_CREAT, 0600);
+-    if (fd >= 0)
++    if (check_recent_crash_file(path, executable))
+     {
+-        int sz;
+-        fstat(fd, &sb); /* !paranoia. this can't fail. */
+-
+-        if (sb.st_size != 0 /* if it wasn't created by us just now... */
+-         && (unsigned)(time(NULL) - sb.st_mtime) < 20 /* and is relatively new [is 20 sec ok?] */
+-        ) {
+-            sz = read(fd, path, sizeof(path)-1); /* (ab)using path as scratch buf */
+-            if (sz > 0)
+-            {
+-                path[sz] = '\0';
+-                if (strcmp(executable, path) == 0)
+-                {
+-                    error_msg("Not dumping repeating crash in '%s'", executable);
+-                    if (setting_MakeCompatCore)
+-                        goto create_user_core;
+-                    return 1;
+-                }
+-            }
+-            lseek(fd, 0, SEEK_SET);
+-        }
+-        sz = write(fd, executable, strlen(executable));
+-        if (sz >= 0)
+-            IGNORE_RESULT(ftruncate(fd, sz));
+-        close(fd);
++        /* It is a repeating crash */
++        if (setting_MakeCompatCore)
++            goto create_user_core;
++        return 1;
+     }
+ 
+     const char *last_slash = strrchr(executable, '/');
+diff --git a/src/include/libabrt.h b/src/include/libabrt.h
+index 317e6f4..a048d77 100644
+--- a/src/include/libabrt.h
++++ b/src/include/libabrt.h
+@@ -63,6 +63,8 @@ int load_abrt_conf();
+ void free_abrt_conf_data();
+ 
+ 
++int check_recent_crash_file(const char *filename, const char *executable);
++
+ /* Returns 1 if abrtd daemon is running, 0 otherwise. */
+ #define daemon_is_ok abrt_daemon_is_ok
+ int daemon_is_ok();
+diff --git a/src/lib/Makefile.am b/src/lib/Makefile.am
+index 6d6c0d0..afc106c 100644
+--- a/src/lib/Makefile.am
++++ b/src/lib/Makefile.am
+@@ -8,7 +8,8 @@ libabrt_la_SOURCES = \
+     abrt_conf.c \
+     hooklib.c \
+     daemon_is_ok.c \
+-    kernel.c
++    kernel.c \
++    check_recent_crash_file.c
+ 
+ libabrt_la_CPPFLAGS = \
+     -Wall -Wwrite-strings -Werror \
+diff --git a/src/lib/check_recent_crash_file.c b/src/lib/check_recent_crash_file.c
+new file mode 100644
+index 0000000..63db260
+--- /dev/null
++++ b/src/lib/check_recent_crash_file.c
+@@ -0,0 +1,60 @@
++/*
++    Copyright (C) 2012	RedHat inc.
++
++    This program is free software; you can redistribute it and/or modify
++    it under the terms of the GNU General Public License as published by
++    the Free Software Foundation; either version 2 of the License, or
++    (at your option) any later version.
++
++    This program is distributed in the hope that it will be useful,
++    but WITHOUT ANY WARRANTY; without even the implied warranty of
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++    GNU General Public License for more details.
++
++    You should have received a copy of the GNU General Public License along
++    with this program; if not, write to the Free Software Foundation, Inc.,
++    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
++*/
++#include "libabrt.h"
++
++/* I want to use -Werror, but gcc-4.4 throws a curveball:
++ * "warning: ignoring return value of 'ftruncate', declared with attribute warn_unused_result"
++ * and (void) cast is not enough to shut it up! Oh God...
++ */
++#define IGNORE_RESULT(func_call) do { if (func_call) /* nothing */; } while (0)
++
++int check_recent_crash_file(const char *filename, const char *executable)
++{
++    int fd = open(filename, O_RDWR | O_CREAT, 0600);
++    if (fd < 0)
++        return 0;
++
++    int ex_len = strlen(executable);
++    struct stat sb;
++    int sz;
++
++    fstat(fd, &sb); /* !paranoia. this can't fail. */
++    if (sb.st_size != 0 /* if it wasn't created by us just now... */
++     && (unsigned)(time(NULL) - sb.st_mtime) < 20 /* and is relatively new [is 20 sec ok?] */
++    ) {
++        char buf[ex_len + 2];
++        sz = read(fd, buf, ex_len + 1);
++        if (sz > 0)
++        {
++            buf[sz] = '\0';
++            if (strcmp(executable, buf) == 0)
++            {
++                error_msg("Not saving repeating crash in '%s'", executable);
++                close(fd);
++                return 1;
++            }
++        }
++        lseek(fd, 0, SEEK_SET);
++    }
++    sz = write(fd, executable, ex_len);
++    if (sz >= 0)
++        IGNORE_RESULT(ftruncate(fd, sz));
++
++    close(fd);
++    return 0;
++}
+-- 
+1.7.7.6
+

@@ -1,0 +1,112 @@
+eventsconfdir = $(EVENTS_CONF_DIR)
+
+dist_eventsconf_DATA = \
+    abrt_event.conf
+
+bin_SCRIPTS = \
+    abrt-handle-upload
+
+bin_PROGRAMS = \
+    abrt-action-save-package-data
+
+sbin_PROGRAMS = \
+    abrtd \
+    abrt-server \
+    abrt-dbus
+
+libexec_PROGRAMS = abrt-handle-event
+
+abrtd_SOURCES = \
+    abrtd.c
+abrtd_CPPFLAGS = \
+    -I$(srcdir)/../include \
+    -I$(srcdir)/../lib \
+    -DVAR_RUN=\"$(VAR_RUN)\" \
+    $(GLIB_CFLAGS) \
+    $(LIBREPORT_CFLAGS) \
+    -D_GNU_SOURCE \
+    -Wall -Wwrite-strings \
+    -Werror
+abrtd_LDADD = \
+    ../lib/libabrt.la \
+    $(LIBREPORT_LIBS)
+
+abrt_server_SOURCES = \
+    abrt-server.c
+abrt_server_CPPFLAGS = \
+    -I$(srcdir)/../include \
+    -I$(srcdir)/../lib \
+    $(GLIB_CFLAGS) \
+    $(LIBREPORT_CFLAGS) \
+    -D_GNU_SOURCE \
+    -Wall -Wwrite-strings -Werror
+abrt_server_LDADD = \
+    ../lib/libabrt.la \
+    $(LIBREPORT_LIBS)
+
+abrt_dbus_SOURCES = \
+    abrt-dbus.c
+abrt_dbus_CPPFLAGS = \
+    -I$(srcdir)/../include \
+    -I$(srcdir)/../lib \
+    -DVAR_RUN=\"$(VAR_RUN)\" \
+    $(GLIB_CFLAGS) \
+    $(DBUS_CFLAGS) \
+    $(LIBREPORT_CFLAGS) \
+    -D_GNU_SOURCE \
+    -Wall -Wwrite-strings \
+    -Werror
+abrt_dbus_LDADD = \
+    $(DBUS_LIBS) \
+    ../lib/libabrt.la \
+    $(LIBREPORT_LIBS) \
+    -labrt_dbus
+
+abrt_handle_event_SOURCES = \
+    abrt-handle-event.c
+abrt_handle_event_CPPFLAGS = \
+    -I$(srcdir)/../include \
+    -I$(srcdir)/../lib \
+    $(GLIB_CFLAGS) \
+    $(LIBREPORT_CFLAGS) \
+    $(BTPARSER_CFLAGS) \
+    -D_GNU_SOURCE \
+    -Wall -Wwrite-strings -Werror
+abrt_handle_event_LDADD = \
+    ../lib/libabrt.la \
+    $(LIBREPORT_LIBS) \
+    $(BTPARSER_LIBS)
+
+abrt_action_save_package_data_SOURCES = \
+    rpm.h rpm.c \
+    abrt-action-save-package-data.c
+abrt_action_save_package_data_CPPFLAGS = \
+    -I$(srcdir)/../include \
+    -I$(srcdir)/../lib \
+    -DCONF_DIR=\"$(CONF_DIR)\" \
+    $(GLIB_CFLAGS) \
+    $(LIBREPORT_CFLAGS) \
+    -D_GNU_SOURCE \
+    -Wall -Wwrite-strings -Werror
+abrt_action_save_package_data_LDADD = \
+    $(RPM_LIBS) \
+    $(LIBREPORT_LIBS) \
+    ../lib/libabrt.la
+
+dbusabrtconfdir = ${sysconfdir}/dbus-1/system.d/
+dist_dbusabrtconf_DATA = dbus-abrt.conf
+
+daemonconfdir = $(CONF_DIR)
+dist_daemonconf_DATA = \
+    abrt.conf \
+    abrt-action-save-package-data.conf \
+    gpg_keys
+
+comredhatabrtservicedir = ${datadir}/dbus-1/system-services
+dist_comredhatabrtservice_DATA = com.redhat.abrt.service
+EXTRA_DIST = abrt-handle-upload
+
+DEFS = -DLOCALEDIR=\"$(localedir)\" @DEFS@
+
+install-data-local:
+	$(mkdir_p) '$(DESTDIR)/$(VAR_RUN)'

@@ -1,0 +1,37 @@
+From d3de24edebe69df2342be3445a287788009ff940 Mon Sep 17 00:00:00 2001
+From: Nikola Pajkovsky <npajkovs@redhat.com>
+Date: Wed, 22 Feb 2012 15:24:56 +0100
+Subject: [PATCH 012/105] analyze-oops: fix double free
+
+Signed-off-by: Nikola Pajkovsky <npajkovs@redhat.com>
+---
+ src/plugins/abrt-action-analyze-oops.c | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/src/plugins/abrt-action-analyze-oops.c b/src/plugins/abrt-action-analyze-oops.c
+index 7b8a718..f7d223b 100644
+--- a/src/plugins/abrt-action-analyze-oops.c
++++ b/src/plugins/abrt-action-analyze-oops.c
+@@ -52,8 +52,10 @@ static void hash_oops_str(char hash_str[SHA1_RESULT_LEN*2 + 1], char *oops_buf,
+ 
+             /* skip symbols prefixed with ? */
+             if (end_mem_block && *end_mem_block == '?')
++            {
++                free(line);
+                 goto skip_line;
+-
++            }
+             /* strip out offset +off/len */
+             begin_off_len = strchr(end_mem_block, '+');
+             if (!begin_off_len)
+@@ -68,7 +70,6 @@ static void hash_oops_str(char hash_str[SHA1_RESULT_LEN*2 + 1], char *oops_buf,
+ 
+             ++i;
+         skip_line:
+-            free(line);
+             call_trace += end_line - call_trace + 1;
+             end_line = strchr(call_trace, '\n');
+             if (end_line)
+-- 
+1.7.11.2
+

@@ -1,0 +1,23 @@
+From 4760ec6ee87ba8026a536128f6924179008a3abf Mon Sep 17 00:00:00 2001
+From: Jiri Moskovcak <jmoskovc@redhat.com>
+Date: Mon, 6 Aug 2012 13:04:57 +0200
+Subject: [PATCH 095/105] automatically send email when a new crash is
+ detected
+
+---
+ src/daemon/abrt_event.conf | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/src/daemon/abrt_event.conf b/src/daemon/abrt_event.conf
+index 9b67034..36d09ab 100644
+--- a/src/daemon/abrt_event.conf
++++ b/src/daemon/abrt_event.conf
+@@ -108,3 +108,4 @@ EVENT=notify_dup package!= uid=
+ #EVENT=post-create
+      reporter-upload -u scp://user:password@server.name/var/spool/abrt-upload || :
+ 
++EVENT=post-create       reporter-mailx --notify-only
+\ No newline at end of file
+-- 
+1.7.11.2
+
