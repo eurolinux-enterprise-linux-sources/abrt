@@ -1,0 +1,30 @@
+From 147302edb4ec56bb4af32588d7329f5cdf92f1e2 Mon Sep 17 00:00:00 2001
+From: Matej Habrnal <mhabrnal@redhat.com>
+Date: Mon, 17 Oct 2016 09:43:01 +0200
+Subject: [PATCH] abrt-server: save 'environ' element
+
+Related to rhbz#1246539
+
+Signed-off-by: Matej Habrnal <mhabrnal@redhat.com>
+---
+ src/daemon/abrt-server.c |    4 ++++
+ 1 files changed, 4 insertions(+), 0 deletions(-)
+
+diff --git a/src/daemon/abrt-server.c b/src/daemon/abrt-server.c
+index 99d8e55..62ecb7a 100644
+--- a/src/daemon/abrt-server.c
++++ b/src/daemon/abrt-server.c
+@@ -134,6 +134,10 @@ static int create_debug_dump()
+ 
+     dd_save_text(dd, "abrt_version", VERSION);
+ 
++    char *environ = get_environ(pid);
++    dd_save_text(dd, FILENAME_ENVIRON, environ ? : "");
++    free(environ);
++
+     dd_close(dd);
+ 
+     /* Move the completely created debug dump to
+-- 
+1.7.1
+

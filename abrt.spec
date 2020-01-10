@@ -16,7 +16,7 @@
 Summary: Automatic bug detection and reporting tool
 Name: abrt
 Version: 2.0.8
-Release: 40.sl6
+Release: 43.sl6
 License: GPLv2+
 Group: Applications/System
 URL: https://fedorahosted.org/abrt/
@@ -297,8 +297,22 @@ Patch326: 0326-Save-Vendor-and-GPG-Fingerprint.patch
 #Patch332: 0332-testsuite-fix-verify-that-report-edits-test.patch
 #Patch333: 0333-testsuite-add-concurrent-processing-test-for-abrtd.patch
 Patch334: 0334-avoid-race-conditions-in-abrtd.patch
-Patch335:	abrt-add-sl-gpg-keys.patch
-# $ git format-patch 2.0.8-40.el6 --topo-order -N --start-number 334 -o /home/repos/rhel/abrt
+# $ git format-patch 2.0.8-40.el6 --topo-order -N --start-number 335 -o /home/repos/rhel/abrt
+#Patch335: 0335-testsuite-fix-broken-reporter-upload-ssh-keys-test.patch
+#Patch336: 0336-testsuite-add-pkg_vendor-reproducible-and-reproducer.patch
+#Patch337: 0337-testsuite-add-a-per-test-timeout-for-15m.patch
+Patch338: 0338-init-scripts-correct-Required-Start.patch
+Patch339: 0339-conf-introduce-DebugLevel.patch
+Patch340: 0340-daemon-avoid-infinite-crash-loops.patch
+#Patch341: 0341-testsuite-abrtd-infinite-loop.patch
+Patch342: 0342-abrt-server-save-environ-element.patch
+Patch343: 0343-ccpp-fast-dumping-and-abrt-core-limit.patch
+#Patch344: 0344-testsuite-abrt-core-dump-file-size-limits.patch
+#Patch345: 0345-spec-install-abrt-CCpp.conf-man-page.patch
+# $ git format-patch 2.0.8-41.el6 --topo-order -N --start-number 346 -o /home/repos/rhel/abrt
+Patch346: 0346-cli-do-not-ask-for-password-if-PrivateReports-no.patch
+Patch347:	abrt-add-sl-gpg-keys.patch
+# $ git format-patch 2.0.8-42.el6 --topo-order -N --start-number 347 -o /home/repos/rhel/abrt
 
 
 # !! Do not forget to add %%patch
@@ -318,7 +332,7 @@ BuildRequires: libtool
 BuildRequires: nss-devel
 BuildRequires: asciidoc
 BuildRequires: xmlto
-BuildRequires: libreport-devel >= 2.0.9-29
+BuildRequires: libreport-devel >= 2.0.9-33
 BuildRequires: satyr-devel >= 0.16
 BuildRequires: elfutils-devel
 BuildRequires: elfutils-libelf-devel
@@ -326,7 +340,7 @@ BuildRequires: binutils-devel
 BuildRequires: augeas
 BuildRequires: libselinux-devel
 
-Requires: libreport >= 2.0.9-29
+Requires: libreport >= 2.0.9-33
 Requires: satyr >= 0.11
 
 %if %{with systemd}
@@ -778,8 +792,19 @@ Examples and documentation for ABRT Python API.
 #patch332: 0332-testsuite-fix-verify-that-report-edits-test.patch
 #patch333: 0333-testsuite-add-concurrent-processing-test-for-abrtd.patch
 %patch334 -p1
-%patch335 -p1
-
+#Patch335: 0335-testsuite-fix-broken-reporter-upload-ssh-keys-test.patch
+#Patch336: 0336-testsuite-add-pkg_vendor-reproducible-and-reproducer.patch
+#Patch337: 0337-testsuite-add-a-per-test-timeout-for-15m.patch
+%patch338 -p1
+%patch339 -p1
+%patch340 -p1
+#Patch341: 0341-testsuite-abrtd-infinite-loop.patch
+%patch342 -p1
+%patch343 -p1
+#Patch344: 0344-testsuite-abrt-core-dump-file-size-limits.patch
+#Patch345: 0345-spec-install-abrt-CCpp.conf-man-page.patch
+%patch346 -p1
+%patch347 -p1
 
 %build
 rm -f src/plugins/*.1
@@ -1123,6 +1148,7 @@ gtk-update-icon-cache %{_datadir}/icons/hicolor &>/dev/null || :
 %{_mandir}/man*/abrt-action-analyze-backtrace.*
 %{_mandir}/man*/abrt-action-list-dsos.*
 %{_mandir}/man1/abrt-install-ccpp-hook.1.gz
+%{_mandir}/man5/abrt-CCpp.conf.5.gz
 
 %files addon-kerneloops
 %defattr(-,root,root,-)
@@ -1189,13 +1215,27 @@ gtk-update-icon-cache %{_datadir}/icons/hicolor &>/dev/null || :
 %config(noreplace) %{_sysconfdir}/profile.d/abrt-console-notification.sh
 
 %changelog
-* Mon May 09 2016 Scientific Linux Auto Patch Process <SCIENTIFIC-LINUX-DEVEL@LISTSERV.FNAL.GOV>
+* Tue Mar 21 2017 Scientific Linux Auto Patch Process <SCIENTIFIC-LINUX-DEVEL@LISTSERV.FNAL.GOV>
 - Added Source: abrt.ini
 -->  Config file for automated patch script
 - Added Patch: abrt-add-sl-gpg-keys.patch
 -->  Add the Scientific Linux keys to the recognized list
 - Ran Regex: (Release: .*)%{\?dist}(.*) => \1.sl6\2
 -->  Modify release string to note changes
+
+* Fri Dec 16 2016 Matej Habrnal <mhabrnal@redhat.com> - 2.0.8-43
+- fix patching of abrt-{ccpp,oops}.init files
+- Resolves: #1346198
+
+* Wed Nov 02 2016 Matej Habrnal <mhabrnal@redhat.com> - 2.0.8-42
+- do not ask for password with PrivateReports disabled
+- Resolves: #1318354
+
+* Wed Nov 02 2016 Matej Habrnal <mhabrnal@redhat.com> - 2.0.8-41
+- Limit corefile dump to the value set as MaxCrashReportsSize
+- Correct Required-Start
+- Avoid infinite crash loops
+- Resolves: #1333068, #1324586, #1346198
 
 * Thu Feb 18 2016 Matej Habrnal <mhabrnal@redhat.com> - 2.0.8-40
 - Avoid race conditions in abrtd

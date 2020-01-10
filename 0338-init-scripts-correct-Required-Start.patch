@@ -1,0 +1,56 @@
+From 69be2781362ce3d985577c20010f5e88c30dfc75 Mon Sep 17 00:00:00 2001
+From: Jakub Filak <jfilak@redhat.com>
+Date: Tue, 14 Jun 2016 15:29:50 +0200
+Subject: [PATCH] init-scripts: correct Required-Start
+
+Resolves: #1346198
+
+Signed-off-by: Jakub Filak <jfilak@redhat.com>
+---
+ init-scripts/abrt-ccpp   |    2 +-
+ init-scripts/abrt-oops   |    2 +-
+ init-scripts/abrt-vmcore |    2 +-
+ 3 files changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/init-scripts/abrt-ccpp b/init-scripts/abrt-ccpp
+index 6221d6b..ccfaf5a 100644
+--- a/init-scripts/abrt-ccpp
++++ b/init-scripts/abrt-ccpp
+@@ -5,7 +5,7 @@
+ # description: Installs coredump handler which saves segfault data
+ ### BEGIN INIT INFO
+ # Provides: abrt-ccpp
+-# Required-Start: $abrtd
++# Required-Start: abrtd
+ # Default-Stop: 0 1 2 6
+ # Default-Start: 3 5
+ # Short-Description: Installs coredump handler which saves segfault data
+diff --git a/init-scripts/abrt-oops b/init-scripts/abrt-oops
+index a9934a9..e92935f 100644
+--- a/init-scripts/abrt-oops
++++ b/init-scripts/abrt-oops
+@@ -5,7 +5,7 @@
+ # description: Watches system log for oops messages, creates ABRT dump directories for each oops
+ ### BEGIN INIT INFO
+ # Provides: abrt-oops
+-# Required-Start: $abrtd
++# Required-Start: abrtd
+ # Default-Stop: 0 1 2 6
+ # Default-Start: 3 5
+ # Short-Description: Watches system log for oops messages, creates ABRT dump directories for each oops
+diff --git a/init-scripts/abrt-vmcore b/init-scripts/abrt-vmcore
+index 34e69ea..b0ece1e 100644
+--- a/init-scripts/abrt-vmcore
++++ b/init-scripts/abrt-vmcore
+@@ -5,7 +5,7 @@
+ # description: Installs coredump handler which saves segfault data
+ ### BEGIN INIT INFO
+ # Provides: abrt-vmcore
+-# Required-Start: $abrtd
++# Required-Start: abrtd
+ # Default-Stop: 0 1 2 6
+ # Default-Start: 3 5
+ # Short-Description: Collects vmcore (kernel crash data) for ABRT
+-- 
+1.7.1
+
