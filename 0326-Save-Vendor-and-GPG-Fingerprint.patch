@@ -1,0 +1,232 @@
+From 650822d0d2438825515c0e41f06cd9fb77a18334 Mon Sep 17 00:00:00 2001
+From: Jakub Filak <jfilak@redhat.com>
+Date: Wed, 13 Jan 2016 17:38:49 +0100
+Subject: [PATCH] Save Vendor and GPG Fingerprint
+
+Red Hat keys can be found at:
+  https://access.redhat.com/security/team/key
+
+Related: #1258474
+---
+ src/daemon/abrt-action-save-package-data.c    |   34 +++++++++++++++++++----
+ src/daemon/abrt-action-save-package-data.conf |    7 +++++
+ src/daemon/rpm.c                              |   36 ++++++++++++++++++-------
+ src/daemon/rpm.h                              |   15 ++++++++++
+ src/plugins/abrt-action-save-kernel-data      |    6 ++++
+ 5 files changed, 82 insertions(+), 16 deletions(-)
+
+diff --git a/src/daemon/abrt-action-save-package-data.c b/src/daemon/abrt-action-save-package-data.c
+index 373382e..bf710de 100644
+--- a/src/daemon/abrt-action-save-package-data.c
++++ b/src/daemon/abrt-action-save-package-data.c
+@@ -210,6 +210,7 @@ static int SavePackageDescriptionToDebugDump(const char *dump_dir_name)
+     char *executable = NULL;
+     char *script_name = NULL; /* only if "interpreter /path/to/script" */
+     char *package_short_name = NULL;
++    char *fingerprint = NULL;
+     struct pkg_envra *pkg_name = NULL;
+     char *component = NULL;
+     int error = 1;
+@@ -304,13 +305,12 @@ static int SavePackageDescriptionToDebugDump(const char *dump_dir_name)
+             }
+         }
+ 
+-        if (settings_bOpenGPGCheck)
++        fingerprint = rpm_get_fingerprint(package_short_name);
++        if (!(fingerprint != NULL && rpm_fingerprint_is_imported(fingerprint))
++             && settings_bOpenGPGCheck)
+         {
+-            if (!rpm_chk_fingerprint(package_short_name))
+-            {
+-                log("Package '%s' isn't signed with proper key", package_short_name);
+-                goto ret; /* return 1 (failure) */
+-            }
++            log("Package '%s' isn't signed with proper key", package_short_name);
++            goto ret; /* return 1 (failure) */
+             /* We used to also check the integrity of the executable here:
+              *  if (!CheckHash(package_short_name.c_str(), executable)) BOOM();
+              * Checking the MD5 sum requires to run prelink to "un-prelink" the
+@@ -334,6 +334,27 @@ static int SavePackageDescriptionToDebugDump(const char *dump_dir_name)
+         dd_save_text(dd, FILENAME_PKG_VERSION, pkg_name->p_version);
+         dd_save_text(dd, FILENAME_PKG_RELEASE, pkg_name->p_release);
+         dd_save_text(dd, FILENAME_PKG_ARCH, pkg_name->p_arch);
++        dd_save_text(dd, FILENAME_PKG_VENDOR, pkg_name->p_vendor);
++
++        if (fingerprint)
++        {
++            /* 16 character + 3 spaces + 1 '\0' + 2 Bytes for errors :) */
++            char key_fingerprint[22] = {0};
++
++            /* The condition is just a defense against errors */
++            for (size_t i = 0, j = 0; j < sizeof(key_fingerprint) - 2; )
++            {
++                key_fingerprint[j++] = toupper(fingerprint[i++]);
++
++                if (fingerprint[i] == '\0')
++                    break;
++
++                if (!(i & (0x3)))
++                    key_fingerprint[j++] = ' ';
++            }
++
++            dd_save_text(dd, FILENAME_PKG_FINGERPRINT, key_fingerprint);
++        }
+     }
+ 
+ 
+@@ -353,6 +374,7 @@ static int SavePackageDescriptionToDebugDump(const char *dump_dir_name)
+     free(package_short_name);
+     free_pkg_envra(pkg_name);
+     free(component);
++    free(fingerprint);
+ 
+     return error;
+ }
+diff --git a/src/daemon/abrt-action-save-package-data.conf b/src/daemon/abrt-action-save-package-data.conf
+index 643259a..84113b9 100644
+--- a/src/daemon/abrt-action-save-package-data.conf
++++ b/src/daemon/abrt-action-save-package-data.conf
+@@ -3,6 +3,13 @@
+ # the list of public keys used to check the signature is
+ # in the file gpg_keys
+ #
++# How can I check the GPG key used to sign an installed pacakge on
++# Red hat Enterprise Linux:
++# https://access.redhat.com/solutions/1120013
++#
++# Product Signing (GPG) Keys:
++# https://access.redhat.com/security/team/key
++#
+ OpenGPGCheck = yes
+ 
+ # Blacklisted packages
+diff --git a/src/daemon/rpm.c b/src/daemon/rpm.c
+index f1514ab..c483464 100644
+--- a/src/daemon/rpm.c
++++ b/src/daemon/rpm.c
+@@ -92,7 +92,22 @@ void rpm_load_gpgkey(const char* filename)
+ 
+ int rpm_chk_fingerprint(const char* pkg)
+ {
+-    int ret = 0;
++    char *fingerprint = rpm_get_fingerprint(pkg);
++    int res = 0;
++    if (fingerprint)
++        res = rpm_fingerprint_is_imported(fingerprint);
++    free(fingerprint);
++    return res;
++}
++
++int rpm_fingerprint_is_imported(const char* fingerprint)
++{
++    return !!g_list_find_custom(list_fingerprints, fingerprint, (GCompareFunc)g_strcmp0);
++}
++
++char *rpm_get_fingerprint(const char *pkg)
++{
++    char *fingerprint = NULL;
+     char *pgpsig = NULL;
+     const char *errmsg = NULL;
+ 
+@@ -110,20 +125,15 @@ int rpm_chk_fingerprint(const char* pkg)
+         goto error;
+     }
+ 
+-    {
+-        char *pgpsig_tmp = strstr(pgpsig, " Key ID ");
+-        if (pgpsig_tmp)
+-        {
+-            pgpsig_tmp += sizeof(" Key ID ") - 1;
+-            ret = g_list_find_custom(list_fingerprints, pgpsig_tmp, (GCompareFunc)g_strcmp0) != NULL;
+-        }
+-    }
++    char *pgpsig_tmp = strstr(pgpsig, " Key ID ");
++    if (pgpsig_tmp)
++        fingerprint = xstrdup(pgpsig_tmp + sizeof(" Key ID ") - 1);
+ 
+ error:
+     free(pgpsig);
+     rpmdbFreeIterator(iter);
+     rpmtsFree(ts);
+-    return ret;
++    return fingerprint;
+ }
+ 
+ /*
+@@ -237,6 +247,7 @@ pkg_add_id(name);
+ pkg_add_id(version);
+ pkg_add_id(release);
+ pkg_add_id(arch);
++pkg_add_id(vendor);
+ 
+ // caller is responsible to free returned value
+ struct pkg_envra *rpm_get_package_nvr(const char *filename, const char *rootdir_or_NULL)
+@@ -307,6 +318,10 @@ struct pkg_envra *rpm_get_package_nvr(const char *filename, const char *rootdir_
+     if (r)
+         goto error;
+ 
++    r = pkg_add_vendor(header, p);
++    if (r)
++        goto error;
++
+     p->p_nvr = xasprintf("%s-%s-%s", p->p_name, p->p_version, p->p_release);
+ 
+     rpmdbFreeIterator(iter);
+@@ -327,6 +342,7 @@ void free_pkg_envra(struct pkg_envra *p)
+     if (!p)
+         return;
+ 
++    free(p->p_vendor);
+     free(p->p_epoch);
+     free(p->p_name);
+     free(p->p_version);
+diff --git a/src/daemon/rpm.h b/src/daemon/rpm.h
+index 1b90368..89aa088 100644
+--- a/src/daemon/rpm.h
++++ b/src/daemon/rpm.h
+@@ -38,6 +38,7 @@ struct pkg_envra {
+     char *p_version;
+     char *p_release;
+     char *p_arch;
++    char *p_vendor;
+ };
+ 
+ void free_pkg_envra(struct pkg_envra *p);
+@@ -69,6 +70,20 @@ void rpm_load_gpgkey(const char* filename);
+ int rpm_chk_fingerprint(const char* pkg);
+ 
+ /**
++ * A function, which checks if the given finger print is imported.
++ * @param pkg A package name.
++ * @return 1 if imported, otherwise (not-imported, or error) 0
++ */
++int rpm_fingerprint_is_imported(const char* fingerprint);
++
++/**
++ * A function, which returns package's finger print
++ * @param pkg A package name.
++ * @return NULL if not-valid, otherwise malloced NULL-terminated string.
++ */
++char *rpm_get_fingerprint(const char* pkg);
++
++/**
+  * Gets a package name. This package contains particular
+  * file. If the file doesn't belong to any package, empty string is
+  * returned.
+diff --git a/src/plugins/abrt-action-save-kernel-data b/src/plugins/abrt-action-save-kernel-data
+index 7df85cf..5f1ddc7 100755
+--- a/src/plugins/abrt-action-save-kernel-data
++++ b/src/plugins/abrt-action-save-kernel-data
+@@ -29,3 +29,9 @@ rpm -q --qf "%{release}\n" "$package" > pkg_release
+ epoch="$( rpm -q --qf "%{epoch}" "$package" )"
+ test "$epoch" = "(none)"  && epoch=0
+ echo "$epoch" > pkg_epoch
++rpm -q --qf "%{vendor}\n" "$package" > pkg_vendor
++
++FINGERPRINT=$(rpm -q --qf "%|SIGGPG?{%{SIGGPG:pgpsig}}:{%{SIGPGP:pgpsig}}|" "$package" 2>/dev/null | tail -1)
++if [ -n "$FINGERPRINT" -a "_(none)" != "_$FINGERPRINT" ]; then
++    echo $FINGERPRINT | sed 's/.*Key ID \(....\)\(....\)\(....\)\(....\)$/\U\1 \U\2 \U\3 \U\4/' > pkg_fingerprint
++fi
+-- 
+1.7.1
+

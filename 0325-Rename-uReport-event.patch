@@ -1,0 +1,106 @@
+From 5d8b219cb906a09f94363a7a6e9c1a643b53f961 Mon Sep 17 00:00:00 2001
+From: Jakub Filak <jfilak@redhat.com>
+Date: Wed, 13 Jan 2016 10:03:20 +0100
+Subject: [PATCH] Rename uReport event
+
+When I was adding the 'submit_uReport' event, I chose the prefix 'submit' in
+order to avoid displaying the event in report-gtk | report-cli as a potential
+report destination.
+
+Now I need to rename the event to 'report_uReport' because we need to offer
+it to users as a report destination.
+
+Related: #1258474
+---
+ src/daemon/abrt.conf          |    4 ++--
+ src/lib/abrt_conf.c           |    2 +-
+ src/plugins/ccpp_event.conf   |    2 +-
+ src/plugins/koops_event.conf  |    2 +-
+ src/plugins/python_event.conf |    2 +-
+ src/plugins/vmcore_event.conf |    2 +-
+ 6 files changed, 7 insertions(+), 7 deletions(-)
+
+diff --git a/src/daemon/abrt.conf b/src/daemon/abrt.conf
+index 9842f91..d20e8df 100644
+--- a/src/daemon/abrt.conf
++++ b/src/daemon/abrt.conf
+@@ -28,9 +28,9 @@ DeleteUploaded = no
+ # In order to run this event automatically after detection, the
+ # AutoreportingEnabled option must be configured to 'yes'
+ #
+-# Default value: submit_uReport
++# Default value: report_uReport
+ #
+-AutoreportingEvent = submit_uReport
++AutoreportingEvent = report_uReport
+ 
+ # Enables automatic running of the event configured in AutoreportingEvent option.
+ #
+diff --git a/src/lib/abrt_conf.c b/src/lib/abrt_conf.c
+index c42065b..e941f38 100644
+--- a/src/lib/abrt_conf.c
++++ b/src/lib/abrt_conf.c
+@@ -91,7 +91,7 @@ static void ParseCommon(map_string_t *settings, const char *conf_filename)
+         g_hash_table_remove(settings, "AutoreportingEvent");
+     }
+     else
+-        g_settings_autoreporting_event = xstrdup("submit_uReport");
++        g_settings_autoreporting_event = xstrdup("report_uReport");
+ 
+     value = get_map_string_item_or_NULL(settings, "PrivateReports");
+     if (value)
+diff --git a/src/plugins/ccpp_event.conf b/src/plugins/ccpp_event.conf
+index 5da99c8..07d2224 100644
+--- a/src/plugins/ccpp_event.conf
++++ b/src/plugins/ccpp_event.conf
+@@ -37,7 +37,7 @@ EVENT=analyze_LocalGDB analyzer=CCpp
+         abrt-action-analyze-ccpp-local --without-di --without-bz --without-bodhi
+ 
+ # Send micro report
+-EVENT=submit_uReport analyzer=CCpp
++EVENT=report_uReport analyzer=CCpp
+         /usr/libexec/abrt-action-ureport
+ 
+ # update ABRT database after successful report to bugzilla
+diff --git a/src/plugins/koops_event.conf b/src/plugins/koops_event.conf
+index 6f6c1ef..bed4c80 100644
+--- a/src/plugins/koops_event.conf
++++ b/src/plugins/koops_event.conf
+@@ -13,7 +13,7 @@ EVENT=post-create analyzer=Kerneloops
+ # report
+ 
+ # Send micro report
+-EVENT=submit_uReport analyzer=Kerneloops
++EVENT=report_uReport analyzer=Kerneloops
+         /usr/libexec/abrt-action-ureport
+ 
+ # update ABRT database after successful report to bugzilla
+diff --git a/src/plugins/python_event.conf b/src/plugins/python_event.conf
+index deae396..d498353 100644
+--- a/src/plugins/python_event.conf
++++ b/src/plugins/python_event.conf
+@@ -2,7 +2,7 @@ EVENT=post-create analyzer=Python
+         abrt-action-analyze-python
+ 
+ # Send micro report
+-EVENT=submit_uReport analyzer=Python
++EVENT=report_uReport analyzer=Python
+         /usr/libexec/abrt-action-ureport
+ 
+ # update ABRT database after successful report to bugzilla
+diff --git a/src/plugins/vmcore_event.conf b/src/plugins/vmcore_event.conf
+index 92300e3..1ce77f1 100644
+--- a/src/plugins/vmcore_event.conf
++++ b/src/plugins/vmcore_event.conf
+@@ -11,7 +11,7 @@ EVENT=analyze_VMcore analyzer=vmcore
+ 
+ 
+ # Send micro report
+-EVENT=submit_uReport analyzer=vmcore
++EVENT=report_uReport analyzer=vmcore
+         /usr/libexec/abrt-action-ureport
+ 
+ # update ABRT database after successful report to bugzilla
+-- 
+1.7.1
+

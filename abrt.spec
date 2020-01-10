@@ -16,7 +16,7 @@
 Summary: Automatic bug detection and reporting tool
 Name: abrt
 Version: 2.0.8
-Release: 34.sl6
+Release: 40.sl6
 License: GPLv2+
 Group: Applications/System
 URL: https://fedorahosted.org/abrt/
@@ -261,7 +261,48 @@ Patch301: 0301-cli-correct-passing-arguments-to-child-process.patch
 # $ git format-patch 2.0.8-33.el6 --topo-order -N --start-number 302 -o /home/repos/rhel/abrt
 Patch302: 0302-ccpp-fix-an-infinite-loop-in-parsing-of-proc-net-uni.patch
 Patch303: 0303-ccpp-correct-parser-of-proc-net-unix.patch
-Patch304:	abrt-add-sl-gpg-keys.patch
+# $ git format-patch 2.0.8-34.el6 --topo-order -N --start-number 304 -o /home/repos/rhel/abrt
+#Patch304: 0304-testsuite-move-tests-to-branch.patch
+#Patch305: 0305-testsuite-update-aux.patch
+#Patch306: 0306-testsuite-fix-load_abrt_conf.patch
+#Patch307: 0307-testsuite-fix-ureport-attachments-naming.patch
+#Patch308: 0308-Revert-testsuite-fix-console-notification-test.patch
+#Patch309: 0309-testsuite-use-rpm-to-remove-packages.patch
+#Patch310: 0310-testsuite-more-verbose-fail-in-get_crash_path.patch
+Patch311: 0311-a-h-upload-replace-configuration-variables-with-thei.patch
+#Patch312: 0312-update-.gitignore.patch
+# $ git format-patch 2.0.8-35.el6 --topo-order -N --start-number 313 -o /home/repos/rhel/abrt
+#Patch313: 0313-testsuite-ureport-fix-race-condition.patch
+#Patch314: 0314-testsuite-fix-system-logs-dumping-in-rhel6.patch
+#Patch315: 0315-testsuite-new-test-dumpdir_completedness.patch
+#Patch316: 0316-testsuite-check-augeas-configuration-sanity.patch
+#Patch317: 0317-testsuite-add-test-for-reporter-upload-SSH-keys.patch
+Patch318: 0318-ccpp-fix-comment-related-to-MakeCompatCore-option-in.patch
+# $ git format-patch 2.0.8-36.el6 --topo-order -N --start-number 319 -o /home/repos/rhel/abrt
+Patch319: 0319-ccpp-add-IgnoredPath-option.patch
+#Patch320: 0320-testsuite-add-test-for-abrt-hook-ccpp-IgnoredPath-op.patch
+#Patch321: 0321-testsuite-add-test-for-AllowedUsers-and-AllowedGroup.patch
+Patch322: 0322-ccpp-add-AllowedUsers-and-AllowedGroups-feature.patch
+#Patch323: 0323-testsuite-bugzilla-private-ticket.patch
+# $ git format-patch 2.0.8-37.el6 --topo-order -N --start-number 323 -o /home/repos/rhel/abrt
+#Patch324: 0324-Add-dependency-to-libreport-2.0.9-28.patch
+Patch325: 0325-Rename-uReport-event.patch
+Patch326: 0326-Save-Vendor-and-GPG-Fingerprint.patch
+#Patch327: 0327-testsuite-add-tests-for-pgk_vendor-and-pkg_fingerpri.patch
+#Patch328: 0328-testsuite-add-rhtsupport-discourage-tests.patch
+#Patch329: 0329-testsuite-use-problem-report-API-to-create-descripti.patch
+# $ git format-patch 2.0.8-39.el6 --topo-order -N --start-number 330 -o /home/repos/rhel/abrt
+#Patch330: 0330-testsuite-reporter-upload-appending-results-to-repor.patch
+#Patch331: 0331-testsuite-ureport-attachments-arbitrary-attachment.patch
+#Patch332: 0332-testsuite-fix-verify-that-report-edits-test.patch
+#Patch333: 0333-testsuite-add-concurrent-processing-test-for-abrtd.patch
+Patch334: 0334-avoid-race-conditions-in-abrtd.patch
+Patch335:	abrt-add-sl-gpg-keys.patch
+# $ git format-patch 2.0.8-40.el6 --topo-order -N --start-number 334 -o /home/repos/rhel/abrt
+
+
+# !! Do not forget to add %%patch
+
 
 BuildRequires: dbus-devel
 BuildRequires: gtk2-devel
@@ -277,7 +318,7 @@ BuildRequires: libtool
 BuildRequires: nss-devel
 BuildRequires: asciidoc
 BuildRequires: xmlto
-BuildRequires: libreport-devel >= 2.0.9-23
+BuildRequires: libreport-devel >= 2.0.9-29
 BuildRequires: satyr-devel >= 0.16
 BuildRequires: elfutils-devel
 BuildRequires: elfutils-libelf-devel
@@ -285,7 +326,7 @@ BuildRequires: binutils-devel
 BuildRequires: augeas
 BuildRequires: libselinux-devel
 
-Requires: libreport >= 2.0.9-23
+Requires: libreport >= 2.0.9-29
 Requires: satyr >= 0.11
 
 %if %{with systemd}
@@ -303,6 +344,7 @@ Obsoletes: abrt-plugin-sosreport > 0.0.1
 Requires: %{name}-python = %{version}-%{release}
 Requires: dbus-python
 Requires: python-dmidecode
+Requires: python-argparse
 Requires: libreport-plugin-ureport
 
 %description
@@ -706,7 +748,38 @@ Examples and documentation for ABRT Python API.
 %patch301 -p1
 %patch302 -p1
 %patch303 -p1
-%patch304 -p1
+#Patch304: 0304-testsuite-move-tests-to-branch.patch
+#Patch305: 0305-testsuite-update-aux.patch
+#Patch306: 0306-testsuite-fix-load_abrt_conf.patch
+#Patch307: 0307-testsuite-fix-ureport-attachments-naming.patch
+#Patch308: 0308-Revert-testsuite-fix-console-notification-test.patch
+#Patch309: 0309-testsuite-use-rpm-to-remove-packages.patch
+#Patch310: 0310-testsuite-more-verbose-fail-in-get_crash_path.patch
+%patch311 -p1
+#Patch312: 0312-update-.gitignore.patch
+#Patch313: 0313-testsuite-ureport-fix-race-condition.patch
+#Patch314: 0314-testsuite-fix-system-logs-dumping-in-rhel6.patch
+#Patch315: 0315-testsuite-new-test-dumpdir_completedness.patch
+#Patch316: 0316-testsuite-check-augeas-configuration-sanity.patch
+#Patch317: 0317-testsuite-add-test-for-reporter-upload-SSH-keys.patch
+%patch318 -p1
+%patch319 -p1
+#%patch320 0320-testsuite-add-test-for-abrt-hook-ccpp-IgnoredPath-op.patch
+#%patch321 0321-testsuite-add-test-for-AllowedUsers-and-AllowedGroup.patch
+%patch322 -p1
+#%patch323 0323-testsuite-bugzilla-private-ticket.patch
+%patch325 -p1
+%patch326 -p1
+#patch327: 0327-testsuite-add-tests-for-pgk_vendor-and-pkg_fingerpri.patch
+#patch328: 0328-testsuite-add-rhtsupport-discourage-tests.patch
+#patch329: 0329-testsuite-use-problem-report-API-to-create-descripti.patch
+#patch330: 0330-testsuite-reporter-upload-appending-results-to-repor.patch
+#patch331: 0331-testsuite-ureport-attachments-arbitrary-attachment.patch
+#patch332: 0332-testsuite-fix-verify-that-report-edits-test.patch
+#patch333: 0333-testsuite-add-concurrent-processing-test-for-abrtd.patch
+%patch334 -p1
+%patch335 -p1
+
 
 %build
 rm -f src/plugins/*.1
@@ -1116,13 +1189,39 @@ gtk-update-icon-cache %{_datadir}/icons/hicolor &>/dev/null || :
 %config(noreplace) %{_sysconfdir}/profile.d/abrt-console-notification.sh
 
 %changelog
-* Wed Jul 22 2015 Scientific Linux Auto Patch Process <SCIENTIFIC-LINUX-DEVEL@LISTSERV.FNAL.GOV>
+* Mon May 09 2016 Scientific Linux Auto Patch Process <SCIENTIFIC-LINUX-DEVEL@LISTSERV.FNAL.GOV>
 - Added Source: abrt.ini
 -->  Config file for automated patch script
 - Added Patch: abrt-add-sl-gpg-keys.patch
 -->  Add the Scientific Linux keys to the recognized list
 - Ran Regex: (Release: .*)%{\?dist}(.*) => \1.sl6\2
 -->  Modify release string to note changes
+
+* Thu Feb 18 2016 Matej Habrnal <mhabrnal@redhat.com> - 2.0.8-40
+- Avoid race conditions in abrtd
+- Resolves: #1245893
+
+* Fri Jan 22 2016 Matej Habrnal <mhabrnal@redhat.com> - 2.0.8-39
+- Limit the description section for ABRT reported cases
+- Resolves: #1261398
+
+* Wed Jan 13 2016 Matej Habrnal <mhabrnal@redhat.com> - 2.0.8-38
+- Add dependency to libreport-2.0.9-28
+- Resolves: #1256705
+
+* Tue Jan 12 2016 Matej Habrnal <mhabrnal@redhat.com> - 2.0.8-37
+- Add AllowedUsers and AllowedGroups feature
+- Add IgnoredPath option
+- Resolves: #1256705, #1208713
+
+* Tue Dec 8 2015 Jakub Filak <jfilak@redhat.com> - 2.0.8-36
+- Add python-argparse to Requires
+- Correct CCpp.conf documentation
+- Resolves: #1246539, #1252384
+
+* Fri Nov 6 2015 Jakub Filak <jfilak@redhat.com> - 2.0.8-35
+- fix abrt-handle-upload
+- Resolves: #1278455
 
 * Fri Jun 12 2015 Jakub Filak <jfilak@redhat.com> - 2.0.8-34
 - fix an infinite loop in abrt-hook-ccpp

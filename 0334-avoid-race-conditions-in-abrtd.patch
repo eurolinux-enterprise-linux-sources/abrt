@@ -1,0 +1,151 @@
+From 22349e13f0f68b09e007b012ffb6f8d9513f5a7a Mon Sep 17 00:00:00 2001
+From: Jakub Filak <jfilak@redhat.com>
+Date: Tue, 16 Feb 2016 19:04:45 +0100
+Subject: [PATCH] avoid race conditions in abrtd
+
+- run the in-hook dump directory cleanup if the dump location size is 1.5
+  greater than MaxCrashReportsSize - the in-hook dump cleanup is the last
+  chance how to recover from disasters - the previous configuration was too
+  sensitive and was producing races with abrtd
+
+- properly handle the incoming queue in abrtd:
+  - do not remove currently processed dump directory
+  - remove the deleted dump directory from the incoming queue
+
+Resolves: #1245893
+
+Signed-off-by: Jakub Filak <jfilak@redhat.com>
+---
+ src/daemon/abrt-server.c   |    4 +-
+ src/daemon/abrtd.c         |   56 +++++++++++++++++++++++++++++++++++--------
+ src/hooks/abrt-hook-ccpp.c |    4 +-
+ 3 files changed, 49 insertions(+), 15 deletions(-)
+
+diff --git a/src/daemon/abrt-server.c b/src/daemon/abrt-server.c
+index 843a000..99d8e55 100644
+--- a/src/daemon/abrt-server.c
++++ b/src/daemon/abrt-server.c
+@@ -149,10 +149,10 @@ static int create_debug_dump()
+     load_abrt_conf();
+     if (g_settings_nMaxCrashReportsSize > 0)
+     {
+-        /* x1.25 and round up to 64m: go a bit up, so that usual in-daemon trimming
++        /* x1.5 and round up to 64m: go a bit up, so that usual in-daemon trimming
+          * kicks in first, and we don't "fight" with it:
+          */
+-        unsigned maxsize = g_settings_nMaxCrashReportsSize + g_settings_nMaxCrashReportsSize / 4;
++        unsigned maxsize = g_settings_nMaxCrashReportsSize + g_settings_nMaxCrashReportsSize / 2;
+         maxsize |= 63;
+         check_free_space(maxsize, g_settings_dump_location);
+         trim_problem_dirs(g_settings_dump_location, maxsize * (double)(1024*1024), path);
+diff --git a/src/daemon/abrtd.c b/src/daemon/abrtd.c
+index 13d77ab..370c827 100644
+--- a/src/daemon/abrtd.c
++++ b/src/daemon/abrtd.c
+@@ -416,8 +416,15 @@ static gboolean handle_event_output_cb(GIOChannel *gio, GIOCondition condition,
+     /* Load problem_data (from the *first dir* if this one is a dup) */
+     struct dump_dir *dd = dd_opendir(work_dir, /*flags:*/ 0);
+     if (!dd)
+-        /* dd_opendir already emitted error msg */
+-        goto delete_bad_dir;
++    {
++        /* dd_opendir already emitted error msg, but the message has no
++         * context so the next message will provide it. */
++        log("Failed to open processed directory %s", state->dirname);
++
++        /* If the directory cannot be opened, then it cannot be deleted.
++         * Hence we will not even try it. */
++        goto ret;
++    }
+ 
+     /* Reset mode/uig/gid to correct values for all files created by event run */
+     dd_sanitize_mode_and_owner(dd);
+@@ -624,32 +631,59 @@ static gboolean handle_inotify_cb(GIOChannel *gio, GIOCondition condition, gpoin
+         char *dirpath = concat_path_file(g_settings_dump_location, name);
+         if (!dir_has_correct_permissions(dirpath))
+         {
+-            error_msg("New directory '%s' has invalid owner or owner", name);
++            error_msg("New directory '%s' has invalid owner or group", name);
+             free(dirpath);
+             continue;
+         }
+ 
+         log("Directory '%s' creation detected", name);
+ 
++        const bool empty_queue = s_dir_queue == NULL;
+         if (g_settings_nMaxCrashReportsSize > 0)
+         {
++            /* We must not delete currently processed directory. */
++            const char *ignored = empty_queue ? name : (strrchr(s_dir_queue->data, '/') + 1);
++
++            bool current_one = false;
+             char *worst_dir = NULL;
+             while (g_settings_nMaxCrashReportsSize > 0
+-             && get_dirsize_find_largest_dir(g_settings_dump_location, &worst_dir, name) / (1024*1024) >= g_settings_nMaxCrashReportsSize
++             && get_dirsize_find_largest_dir(g_settings_dump_location, &worst_dir, ignored) / (1024*1024) >= g_settings_nMaxCrashReportsSize
+              && worst_dir
+             ) {
+-                log("Size of '%s' >= %u MB, deleting '%s'",
+-                    g_settings_dump_location, g_settings_nMaxCrashReportsSize, worst_dir);
+-                /* deletes both directory and DB record */
+-                char *d = concat_path_file(g_settings_dump_location, worst_dir);
++                const char *kind = "old";
++                GList *worst_dir_queue = NULL;
++                char *deleted = concat_path_file(g_settings_dump_location, worst_dir);
++                if (strcmp(worst_dir, name) == 0)
++                {
++                    kind = "new";
++                    current_one = true;
++                }
++                else if ((worst_dir_queue = g_list_find_custom(s_dir_queue, deleted, (GCompareFunc)strcmp)))
++                {
++                    kind = "unprocessed";
++                    free(worst_dir_queue->data);
++                    s_dir_queue = g_list_delete_link(s_dir_queue, worst_dir_queue);
++                }
++
++                log("Size of '%s' >= %u MB (MaxCrashReportsSize), deleting %s directory '%s'",
++                    g_settings_dump_location, g_settings_nMaxCrashReportsSize,
++                    kind, worst_dir);
++
+                 free(worst_dir);
+                 worst_dir = NULL;
+-                delete_dump_dir(d);
+-                free(d);
++
++                struct dump_dir *dd = dd_opendir(deleted, DD_FAIL_QUIETLY_ENOENT);
++                if (dd != NULL)
++                    dd_delete(dd);
++
++                free(deleted);
+             }
++
++            /* Do not start processing nor push it to the incoming queue. */
++            if (current_one)
++                continue;
+         }
+ 
+-        const bool empty_queue = s_dir_queue == NULL;
+         /* push the new directory to the end of the incoming queue */
+         s_dir_queue = g_list_append(s_dir_queue, dirpath);
+ 
+diff --git a/src/hooks/abrt-hook-ccpp.c b/src/hooks/abrt-hook-ccpp.c
+index b41e252..f6fd0c7 100644
+--- a/src/hooks/abrt-hook-ccpp.c
++++ b/src/hooks/abrt-hook-ccpp.c
+@@ -1262,10 +1262,10 @@ int main(int argc, char** argv)
+         /* rhbz#539551: "abrt going crazy when crashing process is respawned" */
+         if (g_settings_nMaxCrashReportsSize > 0)
+         {
+-            /* x1.25 and round up to 64m: go a bit up, so that usual in-daemon trimming
++            /* x1.5 and round up to 64m: go a bit up, so that usual in-daemon trimming
+              * kicks in first, and we don't "fight" with it:
+              */
+-            unsigned maxsize = g_settings_nMaxCrashReportsSize + g_settings_nMaxCrashReportsSize / 4;
++            unsigned maxsize = g_settings_nMaxCrashReportsSize + g_settings_nMaxCrashReportsSize / 2;
+             maxsize |= 63;
+             trim_problem_dirs(g_settings_dump_location, maxsize * (double)(1024*1024), path);
+         }
+-- 
+1.7.1
+
