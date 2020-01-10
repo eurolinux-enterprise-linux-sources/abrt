@@ -1,0 +1,36 @@
+From 26f4267febc1b183233d5925da5736c639803363 Mon Sep 17 00:00:00 2001
+From: Jakub Filak <jfilak@redhat.com>
+Date: Thu, 23 May 2013 15:30:05 +0200
+Subject: [ABRT PATCH] abrt-cli: make status help message more precise
+
+From 'abrt-cli list --full' to either 'abrt-cli list --since XXXXX' or
+'abrt-cli list' if 'abrt-cli status' was called with --since or not.
+
+Related to #659
+
+Signed-off-by: Jakub Filak <jfilak@redhat.com>
+Signed-off-by: Jiri Moskovcak <jmoskovc@redhat.com>
+---
+ src/cli/status.c | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
+
+diff --git a/src/cli/status.c b/src/cli/status.c
+index 6f228c6..ad2bf56 100644
+--- a/src/cli/status.c
++++ b/src/cli/status.c
+@@ -54,7 +54,11 @@ int cmd_status(int argc, const char **argv)
+         if (opt_bare)
+             printf("%u", problem_count);
+         else
+-            printf(_("ABRT has detected '%u' problem(s). (For more info run: $ abrt-cli list --full)\n"), problem_count);
++        {
++            char *list_arg = opt_since ? xasprintf(" --since %d", opt_since) : xstrdup("");
++            printf(_("ABRT has detected '%u' problem(s). (For more info run: $ abrt-cli list%s )\n"), problem_count, list_arg);
++            free(list_arg);
++        }
+     }
+ 
+     list_free_with_free(problem_dir_list);
+-- 
+1.8.3.1
+

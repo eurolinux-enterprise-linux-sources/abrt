@@ -1,0 +1,228 @@
+From 732c1502a86bf872180e738024bd6f33dea76ab4 Mon Sep 17 00:00:00 2001
+From: Jakub Filak <jfilak@redhat.com>
+Date: Wed, 7 May 2014 13:30:24 +0200
+Subject: [ABRT PATCH] refactorize: reflect recent changes in map_string_t
+
+Related to abrt/libreport#147
+
+Signed-off-by: Jakub Filak <jfilak@redhat.com>
+Signed-off-by: Martin Milata <mmilata@redhat.com>
+
+Conflicts:
+
+	src/daemon/abrt-action-save-package-data.c
+	src/lib/abrt_conf.c
+	src/plugins/abrt-action-analyze-xorg.c
+---
+ src/daemon/abrt-action-save-package-data.c   | 30 ++++++++++++++--------------
+ src/hooks/abrt-hook-ccpp.c                   | 10 +++++-----
+ src/lib/abrt_conf.c                          | 28 +++++++++++++-------------
+ src/plugins/abrt-action-analyze-oops.c       |  2 +-
+ src/plugins/abrt-action-generate-backtrace.c |  4 ++--
+ 5 files changed, 37 insertions(+), 37 deletions(-)
+
+diff --git a/src/daemon/abrt-action-save-package-data.c b/src/daemon/abrt-action-save-package-data.c
+index f7644ea..a90c5e1 100644
+--- a/src/daemon/abrt-action-save-package-data.c
++++ b/src/daemon/abrt-action-save-package-data.c
+@@ -56,43 +56,43 @@ static GList *parse_list(const char* list)
+     return l;
+ }
+ 
+-static void ParseCommon(map_string_h *settings, const char *conf_filename)
++static void ParseCommon(map_string_t *settings, const char *conf_filename)
+ {
+-    char *value;
++    const char *value;
+ 
+-    value = g_hash_table_lookup(settings, "OpenGPGCheck");
++    value = get_map_string_item_or_NULL(settings, "OpenGPGCheck");
+     if (value)
+     {
+         settings_bOpenGPGCheck = string_to_bool(value);
+-        g_hash_table_remove(settings, "OpenGPGCheck");
++        remove_map_string_item(settings, "OpenGPGCheck");
+     }
+ 
+-    value = g_hash_table_lookup(settings, "BlackList");
++    value = get_map_string_item_or_NULL(settings, "BlackList");
+     if (value)
+     {
+         settings_setBlackListedPkgs = parse_list(value);
+-        g_hash_table_remove(settings, "BlackList");
++        remove_map_string_item(settings, "BlackList");
+     }
+ 
+-    value = g_hash_table_lookup(settings, "BlackListedPaths");
++    value = get_map_string_item_or_NULL(settings, "BlackListedPaths");
+     if (value)
+     {
+         settings_setBlackListedPaths = parse_list(value);
+-        g_hash_table_remove(settings, "BlackListedPaths");
++        remove_map_string_item(settings, "BlackListedPaths");
+     }
+ 
+-    value = g_hash_table_lookup(settings, "ProcessUnpackaged");
++    value = get_map_string_item_or_NULL(settings, "ProcessUnpackaged");
+     if (value)
+     {
+         settings_bProcessUnpackaged = string_to_bool(value);
+-        g_hash_table_remove(settings, "ProcessUnpackaged");
++        remove_map_string_item(settings, "ProcessUnpackaged");
+     }
+ 
+-    GHashTableIter iter;
+-    char *name;
++    map_string_iter_t iter;
++    const char *name;
+     /*char *value; - already declared */
+-    g_hash_table_iter_init(&iter, settings);
+-    while (g_hash_table_iter_next(&iter, (void**)&name, (void**)&value))
++    init_map_string_iter(&iter, settings);
++    while (next_map_string_iter(&iter, &name, &value))
+     {
+         error_msg("Unrecognized variable '%s' in '%s'", name, conf_filename);
+     }
+@@ -120,7 +120,7 @@ static void load_gpg_keys(void)
+ 
+ static int load_conf(const char *conf_filename)
+ {
+-    map_string_h *settings = new_map_string();
++    map_string_t *settings = new_map_string();
+     if (!load_conf_file(conf_filename, settings, /*skip key w/o values:*/ false))
+         error_msg("Can't open '%s'", conf_filename);
+ 
+diff --git a/src/hooks/abrt-hook-ccpp.c b/src/hooks/abrt-hook-ccpp.c
+index ad30716..d0bb28d 100644
+--- a/src/hooks/abrt-hook-ccpp.c
++++ b/src/hooks/abrt-hook-ccpp.c
+@@ -500,14 +500,14 @@ int main(int argc, char** argv)
+     bool setting_MakeCompatCore;
+     bool setting_SaveBinaryImage;
+     {
+-        map_string_h *settings = new_map_string();
++        map_string_t *settings = new_map_string();
+         load_conf_file(PLUGINS_CONF_DIR"/CCpp.conf", settings, /*skip key w/o values:*/ false);
+-        char *value;
+-        value = g_hash_table_lookup(settings, "MakeCompatCore");
++        const char *value;
++        value = get_map_string_item_or_NULL(settings, "MakeCompatCore");
+         setting_MakeCompatCore = value && string_to_bool(value);
+-        value = g_hash_table_lookup(settings, "SaveBinaryImage");
++        value = get_map_string_item_or_NULL(settings, "SaveBinaryImage");
+         setting_SaveBinaryImage = value && string_to_bool(value);
+-        value = g_hash_table_lookup(settings, "VerboseLog");
++        value = get_map_string_item_or_NULL(settings, "VerboseLog");
+         if (value)
+             g_verbose = xatoi_positive(value);
+         free_map_string(settings);
+diff --git a/src/lib/abrt_conf.c b/src/lib/abrt_conf.c
+index 0b53c21..28932a1 100644
+--- a/src/lib/abrt_conf.c
++++ b/src/lib/abrt_conf.c
+@@ -32,18 +32,18 @@ void free_abrt_conf_data()
+     g_settings_dump_location = NULL;
+ }
+ 
+-static void ParseCommon(map_string_h *settings, const char *conf_filename)
++static void ParseCommon(map_string_t *settings, const char *conf_filename)
+ {
+-    char *value;
++    const char *value;
+ 
+-    value = g_hash_table_lookup(settings, "WatchCrashdumpArchiveDir");
++    value = get_map_string_item_or_NULL(settings, "WatchCrashdumpArchiveDir");
+     if (value)
+     {
+         g_settings_sWatchCrashdumpArchiveDir = xstrdup(value);
+-        g_hash_table_remove(settings, "WatchCrashdumpArchiveDir");
++        remove_map_string_item(settings, "WatchCrashdumpArchiveDir");
+     }
+ 
+-    value = g_hash_table_lookup(settings, "MaxCrashReportsSize");
++    value = get_map_string_item_or_NULL(settings, "MaxCrashReportsSize");
+     if (value)
+     {
+         char *end;
+@@ -53,30 +53,30 @@ static void ParseCommon(map_string_h *settings, const char *conf_filename)
+             error_msg("Error parsing %s setting: '%s'", "MaxCrashReportsSize", value);
+         else
+             g_settings_nMaxCrashReportsSize = ul;
+-        g_hash_table_remove(settings, "MaxCrashReportsSize");
++        remove_map_string_item(settings, "MaxCrashReportsSize");
+     }
+ 
+-    value = g_hash_table_lookup(settings, "DumpLocation");
++    value = get_map_string_item_or_NULL(settings, "DumpLocation");
+     if (value)
+     {
+         g_settings_dump_location = xstrdup(value);
+-        g_hash_table_remove(settings, "DumpLocation");
++        remove_map_string_item(settings, "DumpLocation");
+     }
+     else
+         g_settings_dump_location = xstrdup("/var/spool/abrt");
+ 
+-    value = g_hash_table_lookup(settings, "DeleteUploaded");
++    value = get_map_string_item_or_NULL(settings, "DeleteUploaded");
+     if (value)
+     {
+         g_settings_delete_uploaded = string_to_bool(value);
+-        g_hash_table_remove(settings, "DeleteUploaded");
++        remove_map_string_item(settings, "DeleteUploaded");
+     }
+ 
+     GHashTableIter iter;
+-    char *name;
++    const char *name;
+     /*char *value; - already declared */
+-    g_hash_table_iter_init(&iter, settings);
+-    while (g_hash_table_iter_next(&iter, (void**)&name, (void**)&value))
++    init_map_string_iter(&iter, settings);
++    while (next_map_string_iter(&iter, &name, &value))
+     {
+         error_msg("Unrecognized variable '%s' in '%s'", name, conf_filename);
+     }
+@@ -86,7 +86,7 @@ int load_abrt_conf()
+ {
+     free_abrt_conf_data();
+ 
+-    map_string_h *settings = new_map_string();
++    map_string_t *settings = new_map_string();
+     if (!load_conf_file(CONF_DIR"/abrt.conf", settings, /*skip key w/o values:*/ false))
+         perror_msg("Can't open '%s'", CONF_DIR"/abrt.conf");
+ 
+diff --git a/src/plugins/abrt-action-analyze-oops.c b/src/plugins/abrt-action-analyze-oops.c
+index d7acb9f..5a3c2be 100644
+--- a/src/plugins/abrt-action-analyze-oops.c
++++ b/src/plugins/abrt-action-analyze-oops.c
+@@ -56,7 +56,7 @@ int main(int argc, char **argv)
+     if (!dd)
+         return 1;
+ 
+-    map_string_h *settings = new_map_string();
++    map_string_t *settings = new_map_string();
+     load_conf_file(PLUGINS_CONF_DIR"/oops.conf", settings, /*skip key w/o values:*/ false);
+ 
+     char *oops = dd_load_text(dd, FILENAME_BACKTRACE);
+diff --git a/src/plugins/abrt-action-generate-backtrace.c b/src/plugins/abrt-action-generate-backtrace.c
+index 0c3ff88..eb62e69 100644
+--- a/src/plugins/abrt-action-generate-backtrace.c
++++ b/src/plugins/abrt-action-generate-backtrace.c
+@@ -60,11 +60,11 @@ int main(int argc, char **argv)
+ 
+     export_abrt_envvars(0);
+ 
+-    map_string_h *settings = new_map_string();
++    map_string_t *settings = new_map_string();
+     if (!load_conf_file(PLUGINS_CONF_DIR"/CCpp.conf", settings, /*skip key w/o values:*/ false))
+         error_msg("Can't open '%s'", PLUGINS_CONF_DIR"/CCpp.conf");
+ 
+-    char *value = g_hash_table_lookup(settings, "DebuginfoLocation");
++    const char *value = get_map_string_item_or_NULL(settings, "DebuginfoLocation");
+     char *debuginfo_location;
+     if (value)
+         debuginfo_location = xstrdup(value);
+-- 
+1.8.3.1
+

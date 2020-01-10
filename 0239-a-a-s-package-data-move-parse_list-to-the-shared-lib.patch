@@ -1,0 +1,57 @@
+From af921379859405038837297675709d327af9f3ca Mon Sep 17 00:00:00 2001
+From: Jakub Filak <jfilak@redhat.com>
+Date: Thu, 19 Feb 2015 23:00:58 +0100
+Subject: [ABRT PATCH] a-a-s-package-data: move parse_list to the shared
+ library in libreport
+
+Original commit: aa75ecbc344bf6d732e3b4e38de4bc543f08a70d
+
+Signed-off-by: Jakub Filak <jfilak@redhat.com>
+---
+ src/daemon/abrt-action-save-package-data.c | 30 ------------------------------
+ 1 file changed, 30 deletions(-)
+
+diff --git a/src/daemon/abrt-action-save-package-data.c b/src/daemon/abrt-action-save-package-data.c
+index 1912e08..575fe0c 100644
+--- a/src/daemon/abrt-action-save-package-data.c
++++ b/src/daemon/abrt-action-save-package-data.c
+@@ -26,36 +26,6 @@ static GList *settings_setBlackListedPkgs = NULL;
+ static GList *settings_setBlackListedPaths = NULL;
+ static bool   settings_bProcessUnpackaged = false;
+ 
+-static GList *parse_list(const char* list)
+-{
+-    struct strbuf *item = strbuf_new();
+-    GList *l = NULL;
+-
+-    char *trim_item = NULL;
+-
+-    for (unsigned ii = 0; list[ii]; ii++)
+-    {
+-        if (list[ii] == ',')
+-        {
+-            trim_item = strtrim(item->buf);
+-            l = g_list_append(l, xstrdup(trim_item));
+-            strbuf_clear(item);
+-        }
+-        else
+-            strbuf_append_char(item, list[ii]);
+-    }
+-
+-    if (item->len > 0)
+-    {
+-        trim_item = strtrim(item->buf);
+-        l = g_list_append(l, xstrdup(trim_item));
+-    }
+-
+-    strbuf_free(item);
+-
+-    return l;
+-}
+-
+ static void ParseCommon(map_string_t *settings, const char *conf_filename)
+ {
+     const char *value;
+-- 
+1.8.3.1
+

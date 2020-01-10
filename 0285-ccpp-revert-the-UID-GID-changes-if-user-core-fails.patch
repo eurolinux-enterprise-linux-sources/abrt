@@ -1,0 +1,102 @@
+From 3b9c0512ca3d7d1f1f5809954a4cd20aa5b1bfd2 Mon Sep 17 00:00:00 2001
+From: Jakub Filak <jfilak@redhat.com>
+Date: Mon, 4 May 2015 13:23:43 +0200
+Subject: [ABRT PATCH] ccpp: revert the UID/GID changes if user core fails
+
+Thanks Florian Weimer <fweimer@redhat.com>
+
+Signed-off-by: Jakub Filak <jfilak@redhat.com>
+---
+ src/hooks/abrt-hook-ccpp.c | 58 ++++++++++++++++++++++++++++------------------
+ 1 file changed, 36 insertions(+), 22 deletions(-)
+
+diff --git a/src/hooks/abrt-hook-ccpp.c b/src/hooks/abrt-hook-ccpp.c
+index cb96286..d6772ba 100644
+--- a/src/hooks/abrt-hook-ccpp.c
++++ b/src/hooks/abrt-hook-ccpp.c
+@@ -360,9 +360,6 @@ static int open_user_core(uid_t uid, uid_t fsuid, pid_t pid, char **percent_valu
+         return -1;
+     }
+ 
+-    xsetegid(get_fsgid(pid));
+-    xseteuid(fsuid);
+-
+     if (strcmp(core_basename, "core") == 0)
+     {
+         /* Mimic "core.PID" if requested */
+@@ -455,36 +452,53 @@ static int open_user_core(uid_t uid, uid_t fsuid, pid_t pid, char **percent_valu
+      * and the description of the /proc/sys/fs/suid_dumpable file in proc(5).)
+      */
+ 
+-    /* Set SELinux context like kernel when creating core dump file */
+-    if (newcon != NULL && setfscreatecon_raw(newcon) < 0)
+-    {
+-        perror_msg("setfscreatecon_raw(%s)", newcon);
+-        return -1;
+-    }
++    int user_core_fd = -1;
++    int selinux_fail = 1;
+ 
+-    struct stat sb;
+-    errno = 0;
+-    /* Do not O_TRUNC: if later checks fail, we do not want to have file already modified here */
+-    int user_core_fd = openat(dirfd(proc_cwd), core_basename, O_WRONLY | O_CREAT | O_NOFOLLOW | g_user_core_flags, 0600); /* kernel makes 0600 too */
++    /*
++     * These calls must be reverted as soon as possible.
++     */
++    xsetegid(get_fsgid(pid));
++    xseteuid(fsuid);
+ 
+-    if (newcon != NULL && setfscreatecon_raw(NULL) < 0)
++    /* Set SELinux context like kernel when creating core dump file.
++     * This condition is TRUE if */
++    if (/* SELinux is disabled  */ newcon == NULL
++     || /* or the call succeeds */ setfscreatecon_raw(newcon) >= 0)
+     {
+-        error_msg("setfscreatecon_raw(NULL)");
+-        goto user_core_fail;
++        /* Do not O_TRUNC: if later checks fail, we do not want to have file already modified here */
++        user_core_fd = openat(dirfd(proc_cwd), core_basename, O_WRONLY | O_CREAT | O_NOFOLLOW | g_user_core_flags, 0600); /* kernel makes 0600 too */
++
++        /* Do the error check here and print the error message in order to
++         * avoid interference in 'errno' usage caused by SELinux functions */
++        if (user_core_fd < 0)
++            perror_msg("Can't open '%s' at '%s'", core_basename, user_pwd);
++
++        /* Fail if SELinux is enabled and the call fails */
++        if (newcon != NULL && setfscreatecon_raw(NULL) < 0)
++            perror_msg("setfscreatecon_raw(NULL)");
++        else
++            selinux_fail = 0;
+     }
++    else
++        perror_msg("setfscreatecon_raw(%s)", newcon);
+ 
++    /*
++     * DON'T JUMP OVER THIS REVERT OF THE UID/GID CHANGES
++     */
+     xsetegid(0);
+     xseteuid(0);
+-    if (user_core_fd < 0
+-     || fstat(user_core_fd, &sb) != 0
++
++    if (user_core_fd < 0 || selinux_fail)
++        goto user_core_fail;
++
++    struct stat sb;
++    if (fstat(user_core_fd, &sb) != 0
+      || !S_ISREG(sb.st_mode)
+      || sb.st_nlink != 1
+      || sb.st_uid != fsuid
+     ) {
+-        if (user_core_fd < 0)
+-            perror_msg("Can't open '%s' at '%s'", core_basename, user_pwd);
+-        else
+-            perror_msg("'%s' at '%s' is not a regular file with link count 1 owned by UID(%d)", core_basename, user_pwd, fsuid);
++        perror_msg("'%s' at '%s' is not a regular file with link count 1 owned by UID(%d)", core_basename, user_pwd, fsuid);
+         goto user_core_fail;
+     }
+     if (ftruncate(user_core_fd, 0) != 0) {
+-- 
+1.8.3.1
+

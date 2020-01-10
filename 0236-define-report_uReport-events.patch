@@ -1,0 +1,133 @@
+From 1c12616b2efab392fb96b9af488a3157870a8dfb Mon Sep 17 00:00:00 2001
+From: Jakub Filak <jfilak@redhat.com>
+Date: Mon, 12 May 2014 16:33:37 +0200
+Subject: [ABRT PATCH] define report_uReport events
+
+Signed-off-by: Jakub Filak <jfilak@redhat.com>
+---
+ src/plugins/Makefile.am        | 6 ++++--
+ src/plugins/ccpp_event.conf    | 7 +++++++
+ src/plugins/koops_event.conf   | 9 +++++++++
+ src/plugins/post_report.xml.in | 8 ++++++++
+ src/plugins/python_event.conf  | 8 ++++++++
+ src/plugins/vmcore_event.conf  | 8 ++++++++
+ 6 files changed, 44 insertions(+), 2 deletions(-)
+ create mode 100644 src/plugins/post_report.xml.in
+
+diff --git a/src/plugins/Makefile.am b/src/plugins/Makefile.am
+index 5d0bb60..1dacdb8 100644
+--- a/src/plugins/Makefile.am
++++ b/src/plugins/Makefile.am
+@@ -35,7 +35,8 @@ dist_events_DATA = \
+     collect_xsession_errors.xml \
+     collect_GConf.xml \
+     collect_vimrc_user.xml \
+-    collect_vimrc_system.xml
++    collect_vimrc_system.xml \
++    post_report.xml
+ 
+ @INTLTOOL_XML_RULE@
+ 
+@@ -70,7 +71,8 @@ EXTRA_DIST = \
+     https-utils.h \
+     abrt-action-analyze-ccpp-local \
+     abrt-action-save-kernel-data \
+-    abrt-action-ureport
++    abrt-action-ureport \
++    post_report.xml.in
+ 
+ abrt_dump_oops_SOURCES = \
+     abrt-dump-oops.c
+diff --git a/src/plugins/ccpp_event.conf b/src/plugins/ccpp_event.conf
+index dfb92a3..07d2224 100644
+--- a/src/plugins/ccpp_event.conf
++++ b/src/plugins/ccpp_event.conf
+@@ -36,6 +36,13 @@ EVENT=analyze_LocalGDB analyzer=CCpp
+ 	# if you want to enable it, just remove the --without-di
+         abrt-action-analyze-ccpp-local --without-di --without-bz --without-bodhi
+ 
++# Send micro report
++EVENT=report_uReport analyzer=CCpp
++        /usr/libexec/abrt-action-ureport
++
++# update ABRT database after successful report to bugzilla
++#EVENT=post_report analyzer=CCpp
++#        reporter-ureport -A -B
+ 
+ # Bugzilla requires nonempty duphash
+ #EVENT=report_Bugzilla analyzer=CCpp duphash!=
+diff --git a/src/plugins/koops_event.conf b/src/plugins/koops_event.conf
+index c25ab19..bed4c80 100644
+--- a/src/plugins/koops_event.conf
++++ b/src/plugins/koops_event.conf
+@@ -11,6 +11,15 @@ EVENT=post-create analyzer=Kerneloops
+         reporter-kerneloops
+ 
+ # report
++
++# Send micro report
++EVENT=report_uReport analyzer=Kerneloops
++        /usr/libexec/abrt-action-ureport
++
++# update ABRT database after successful report to bugzilla
++#EVENT=post_report analyzer=Kerneloops
++#        reporter-ureport -A -B
++
+ #EVENT=report_Kerneloops analyzer=Kerneloops
+ #        reporter-kerneloops
+ 
+diff --git a/src/plugins/post_report.xml.in b/src/plugins/post_report.xml.in
+new file mode 100644
+index 0000000..6f13b2e
+--- /dev/null
++++ b/src/plugins/post_report.xml.in
+@@ -0,0 +1,8 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<event>
++    <_name>Post report</_name>
++    <_description>Executed after the reporting is finished</_description>
++    <_long-description>Used for updating of the databases</_long-description>
++    <requires-items>reported_to</requires-items>
++    <gui-review-elements>no</gui-review-elements>
++</event>
+diff --git a/src/plugins/python_event.conf b/src/plugins/python_event.conf
+index 0ee96b7..d498353 100644
+--- a/src/plugins/python_event.conf
++++ b/src/plugins/python_event.conf
+@@ -1,6 +1,14 @@
+ EVENT=post-create analyzer=Python
+         abrt-action-analyze-python
+ 
++# Send micro report
++EVENT=report_uReport analyzer=Python
++        /usr/libexec/abrt-action-ureport
++
++# update ABRT database after successful report to bugzilla
++#EVENT=post_report analyzer=Python
++#        reporter-ureport -A -B
++
+ #EVENT=report_Bugzilla analyzer=Python
+ #        test -f component || abrt-action-save-package-data
+ #        reporter-bugzilla -b -c /etc/libreport/plugins/bugzilla.conf
+diff --git a/src/plugins/vmcore_event.conf b/src/plugins/vmcore_event.conf
+index a62d413..1ce77f1 100644
+--- a/src/plugins/vmcore_event.conf
++++ b/src/plugins/vmcore_event.conf
+@@ -9,6 +9,14 @@ EVENT=analyze_VMcore analyzer=vmcore
+ #EVENT=post-create analyzer=vmcore
+         reporter-kerneloops
+ 
++
++# Send micro report
++EVENT=report_uReport analyzer=vmcore
++        /usr/libexec/abrt-action-ureport
++
++# update ABRT database after successful report to bugzilla
++#EVENT=post_report analyzer=vmcore
++#        reporter-ureport -A -B
+ # report
+ #EVENT=report_Kerneloops analyzer=vmcore
+ #        reporter-kerneloops
+-- 
+1.8.3.1
+

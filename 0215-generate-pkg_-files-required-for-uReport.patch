@@ -1,0 +1,482 @@
+From 760ecf3c36fe0192a244acec0fa5e2e1d9d33103 Mon Sep 17 00:00:00 2001
+From: Jakub Filak <jfilak@redhat.com>
+Date: Fri, 2 May 2014 15:03:01 +0200
+Subject: [ABRT PATCH] generate pkg_* files required for uReport
+
+Signed-off-by: Jakub Filak <jfilak@redhat.com>
+---
+ src/daemon/abrt-action-save-package-data.c | 186 +++++++++++++++++------------
+ src/daemon/rpm.c                           |  84 +++++++++++--
+ src/daemon/rpm.h                           |  13 +-
+ src/plugins/Makefile.am                    |   6 +-
+ src/plugins/abrt-action-save-kernel-data   |  31 +++++
+ src/plugins/koops_event.conf               |   3 +-
+ 6 files changed, 237 insertions(+), 86 deletions(-)
+ create mode 100755 src/plugins/abrt-action-save-kernel-data
+
+diff --git a/src/daemon/abrt-action-save-package-data.c b/src/daemon/abrt-action-save-package-data.c
+index 955c805..f7644ea 100644
+--- a/src/daemon/abrt-action-save-package-data.c
++++ b/src/daemon/abrt-action-save-package-data.c
+@@ -181,112 +181,141 @@ static bool is_path_blacklisted(const char *path)
+     return false;
+ }
+ 
++static struct pkg_envra *get_script_name(const char *cmdline, char **executable)
++{
++// TODO: we don't verify that python executable is not modified
++// or that python package is properly signed
++// (see CheckFingerprint/CheckHash below)
++    /* Try to find package for the script by looking at argv[1].
++     * This will work only if the cmdline contains the whole path.
++     * Example: python /usr/bin/system-control-network
++     */
++    struct pkg_envra *script_pkg = NULL;
++    char *script_name = get_argv1_if_full_path(cmdline);
++    if (script_name)
++    {
++        script_pkg = rpm_get_package_nvr(script_name, NULL);
++        if (script_pkg)
++        {
++            /* There is a well-formed script name in argv[1],
++             * and it does belong to some package.
++             * Replace executable
++             * with data pertaining to the script.
++             */
++            *executable = script_name;
++        }
++    }
++
++    return script_pkg;
++}
++
++
+ static int SavePackageDescriptionToDebugDump(const char *dump_dir_name)
+ {
+     struct dump_dir *dd = dd_opendir(dump_dir_name, /*flags:*/ 0);
+     if (!dd)
+         return 1;
+ 
++    char *analyzer = dd_load_text(dd, FILENAME_ANALYZER);
++    if (!strcmp(analyzer, "Kerneloops"))
++    {
++        dd_save_text(dd, FILENAME_PACKAGE, "kernel");
++        dd_save_text(dd, FILENAME_COMPONENT, "kernel");
++        dd_close(dd);
++        free(analyzer);
++        return 0;
++    }
++    free(analyzer);
++
+     char *cmdline = NULL;
+     char *executable = NULL;
+     char *rootdir = NULL;
+     char *script_name = NULL; /* only if "interpreter /path/to/script" */
+     char *package_short_name = NULL;
+-    char *package_full_name = NULL;
++    struct pkg_envra *pkg_name = NULL;
+     char *component = NULL;
+     int error = 1;
+     /* note: "goto ret" statements below free all the above variables,
+      * but they don't dd_close(dd) */
+ 
+-    char *analyzer = dd_load_text(dd, FILENAME_ANALYZER);
+-    bool kernel = (strcmp(analyzer, "Kerneloops") == 0);
+-    free(analyzer);
+-    if (kernel)
+-    {
+-        package_full_name = xstrdup("kernel");
+-        component = xstrdup("kernel");
+-    }
+-    else
+-    {
+-        cmdline = dd_load_text(dd, FILENAME_CMDLINE);
+-        executable = dd_load_text(dd, FILENAME_EXECUTABLE);
+-        rootdir = dd_load_text_ext(dd, FILENAME_ROOTDIR,
+-                DD_FAIL_QUIETLY_ENOENT | DD_LOAD_TEXT_RETURN_NULL_ON_FAILURE);
++    cmdline = dd_load_text(dd, FILENAME_CMDLINE);
++    executable = dd_load_text(dd, FILENAME_EXECUTABLE);
++    rootdir = dd_load_text_ext(dd, FILENAME_ROOTDIR,
++            DD_FAIL_QUIETLY_ENOENT | DD_LOAD_TEXT_RETURN_NULL_ON_FAILURE);
+ 
+-        /* Close dd while we query package database. It can take some time,
+-         * don't want to keep dd locked longer than necessary */
+-        dd_close(dd);
++    /* Close dd while we query package database. It can take some time,
++     * don't want to keep dd locked longer than necessary */
++    dd_close(dd);
+ 
+-        if (is_path_blacklisted(executable))
+-        {
+-            log("Blacklisted executable '%s'", executable);
+-            goto ret; /* return 1 (failure) */
+-        }
++    if (is_path_blacklisted(executable))
++    {
++        log("Blacklisted executable '%s'", executable);
++        goto ret; /* return 1 (failure) */
++    }
+ 
+-        package_full_name = rpm_get_package_nvr(executable, rootdir);
+-        if (!package_full_name)
++    pkg_name = rpm_get_package_nvr(executable, rootdir);
++    if (!pkg_name)
++    {
++        if (settings_bProcessUnpackaged)
+         {
+-            if (settings_bProcessUnpackaged)
+-            {
+-                VERB2 log("Crash in unpackaged executable '%s', proceeding without packaging information", executable);
+-                goto ret0; /* no error */
+-            }
+-            log("Executable '%s' doesn't belong to any package"
+-                " and ProcessUnpackaged is set to 'no'",
+-                executable
+-            );
+-            goto ret; /* return 1 (failure) */
++            VERB2 log("Crash in unpackaged executable '%s', proceeding without packaging information", executable);
++            goto ret0; /* no error */
+         }
++        log("Executable '%s' doesn't belong to any package"
++            " and ProcessUnpackaged is set to 'no'",
++            executable
++        );
++        goto ret; /* return 1 (failure) */
++    }
+ 
+-        /* Check well-known interpreter names */
+-        {
+-            const char *basename = strrchr(executable, '/');
+-            if (basename) basename++; else basename = executable;
++    /* Check well-known interpreter names */
++    {
++        const char *basename = strrchr(executable, '/');
++        if (basename) basename++; else basename = executable;
+ 
+-            /* Add more interpreters as needed */
+-            if (strcmp(basename, "python") == 0
+-             || strcmp(basename, "perl") == 0
+-            ) {
++        /* Add more interpreters as needed */
++        if (strcmp(basename, "python") == 0
++         || strcmp(basename, "perl") == 0
++        ) {
+ // TODO: we don't verify that python executable is not modified
+ // or that python package is properly signed
+ // (see CheckFingerprint/CheckHash below)
+-                /* Try to find package for the script by looking at argv[1].
+-                 * This will work only if the cmdline contains the whole path.
+-                 * Example: python /usr/bin/system-control-network
++            /* Try to find package for the script by looking at argv[1].
++             * This will work only if the cmdline contains the whole path.
++             * Example: python /usr/bin/system-control-network
++             */
++            struct pkg_envra *script_pkg = get_script_name(cmdline, &executable);
++            /* executable may have changed, check it again */
++            if (is_path_blacklisted(executable))
++            {
++                log("Blacklisted executable '%s'", executable);
++                goto ret; /* return 1 (failure) */
++            }
++            if (!script_pkg)
++            {
++                /* Script name is not absolute, or it doesn't
++                 * belong to any installed package.
+                  */
+-                char *script_pkg = NULL;
+-                char *script_name = get_argv1_if_full_path(cmdline);
+-                if (script_name)
+-                {
+-                    script_pkg = rpm_get_package_nvr(script_name, NULL);
+-                    if (script_pkg)
+-                    {
+-                        /* There is a well-formed script name in argv[1],
+-                         * and it does belong to some package.
+-                         * Replace interpreter's package_full_name and executable
+-                         * with data pertaining to the script.
+-                         */
+-                        free(package_full_name);
+-                        package_full_name = script_pkg;
+-                        executable = script_name;
+-                        /* executable has changed, check it again */
+-                        if (is_path_blacklisted(executable))
+-                        {
+-                            log("Blacklisted executable '%s'", executable);
+-                            goto ret; /* return 1 (failure) */
+-                        }
+-                    }
+-                }
+-                if (!script_pkg && !settings_bProcessUnpackaged)
++                if (!settings_bProcessUnpackaged)
+                 {
+                     log("Interpreter crashed, but no packaged script detected: '%s'", cmdline);
+                     goto ret; /* return 1 (failure) */
+                 }
++
++                /* Unpackaged script, but the settings says we want to keep it.
++                 * BZ plugin wont allow to report this anyway, because component
++                 * is missing, so there is no reason to mark it as not_reportable.
++                 * Someone might want to use abrt to report it using ftp.
++                 */
++                goto ret0;
+             }
++
++            free_pkg_envra(pkg_name);
++            pkg_name = script_pkg;
+         }
+ 
+-        package_short_name = get_package_name_from_NVR_or_NULL(package_full_name);
+-        VERB2 log("Package:'%s' short:'%s'", package_full_name, package_short_name);
++        package_short_name = xasprintf("%s", pkg_name->p_name);
++        VERB1 log("Package:'%s' short:'%s'", pkg_name->p_nvr, package_short_name);
+ 
+         GList *li;
+ 
+@@ -321,10 +350,17 @@ static int SavePackageDescriptionToDebugDump(const char *dump_dir_name)
+             goto ret; /* return 1 (failure) */
+     }
+ 
+-    if (package_full_name)
++    if (pkg_name)
+     {
+-        dd_save_text(dd, FILENAME_PACKAGE, package_full_name);
++        dd_save_text(dd, FILENAME_PACKAGE, pkg_name->p_nvr);
++        dd_save_text(dd, FILENAME_PKG_EPOCH, pkg_name->p_epoch);
++        dd_save_text(dd, FILENAME_PKG_NAME, pkg_name->p_name);
++        dd_save_text(dd, FILENAME_PKG_VERSION, pkg_name->p_version);
++        dd_save_text(dd, FILENAME_PKG_RELEASE, pkg_name->p_release);
++        dd_save_text(dd, FILENAME_PKG_ARCH, pkg_name->p_arch);
+     }
++
++
+     if (component)
+     {
+         dd_save_text(dd, FILENAME_COMPONENT, component);
+@@ -340,7 +376,7 @@ static int SavePackageDescriptionToDebugDump(const char *dump_dir_name)
+     free(rootdir);
+     free(script_name);
+     free(package_short_name);
+-    free(package_full_name);
++    free_pkg_envra(pkg_name);
+     free(component);
+ 
+     return error;
+diff --git a/src/daemon/rpm.c b/src/daemon/rpm.c
+index 2fe57b8..f1514ab 100644
+--- a/src/daemon/rpm.c
++++ b/src/daemon/rpm.c
+@@ -219,14 +219,34 @@ char* rpm_get_component(const char *filename, const char *rootdir_or_NULL)
+     return ret;
+ }
+ 
++#define pkg_add_id(name)                                                \
++    static inline int pkg_add_##name(Header header, struct pkg_envra *p) \
++    {                                                                   \
++        const char *errmsg = NULL;                                      \
++        p->p_##name = headerFormat(header, "%{"#name"}", &errmsg);      \
++        if (p->p_##name || !errmsg)                                     \
++            return 0;                                                   \
++                                                                        \
++        error_msg("cannot get "#name": %s", errmsg);                    \
++                                                                        \
++        return -1;                                                      \
++    }                                                                   \
++
++pkg_add_id(epoch);
++pkg_add_id(name);
++pkg_add_id(version);
++pkg_add_id(release);
++pkg_add_id(arch);
++
+ // caller is responsible to free returned value
+-char* rpm_get_package_nvr(const char *filename, const char *rootdir_or_NULL)
++struct pkg_envra *rpm_get_package_nvr(const char *filename, const char *rootdir_or_NULL)
+ {
+-    char *nvr = NULL;
+     rpmts ts;
+     rpmdbMatchIterator iter;
+     Header header;
+ 
++    struct pkg_envra *p = NULL;
++
+     ts = rpmtsCreate();
+     /* This loop executes once (normally) or twice (if we detect chroot) */
+     while (1)
+@@ -254,14 +274,64 @@ char* rpm_get_package_nvr(const char *filename, const char *rootdir_or_NULL)
+         rootdir_or_NULL = NULL;
+     }
+ 
+-    const char *errmsg = NULL;
+-    nvr = headerFormat(header, "%{NAME}-%{VERSION}-%{RELEASE}", &errmsg);
+-    if (!nvr && errmsg)
+-        error_msg("cannot get nvr. reason: %s", errmsg);
++
++
++    p = xzalloc(sizeof(*p));
++    int r;
++    r = pkg_add_epoch(header, p);
++    if (r)
++        goto error;
++   /*
++    * <npajkovs> hello, what's the difference between epoch '0' and  '(none)'?
++    * <Panu> nothing really, a missing epoch is considered equal to zero epoch
++    */
++    if (!strncmp(p->p_epoch, "(none)", strlen("(none)")))
++    {
++        free(p->p_epoch);
++        p->p_epoch = xstrdup("0");
++    }
++
++    r = pkg_add_name(header, p);
++    if (r)
++        goto error;
++
++    r = pkg_add_version(header, p);
++    if (r)
++        goto error;
++
++    r = pkg_add_release(header, p);
++    if (r)
++        goto error;
++
++    r = pkg_add_arch(header, p);
++    if (r)
++        goto error;
++
++    p->p_nvr = xasprintf("%s-%s-%s", p->p_name, p->p_version, p->p_release);
++
++    rpmdbFreeIterator(iter);
++    rpmtsFree(ts);
++    return p;
+ 
+  error:
++    free_pkg_envra(p);
++
+     rpmdbFreeIterator(iter);
+  error1:
+     rpmtsFree(ts);
+-    return nvr;
++    return NULL;
++}
++
++void free_pkg_envra(struct pkg_envra *p)
++{
++    if (!p)
++        return;
++
++    free(p->p_epoch);
++    free(p->p_name);
++    free(p->p_version);
++    free(p->p_release);
++    free(p->p_arch);
++    free(p->p_nvr);
++    free(p);
+ }
+diff --git a/src/daemon/rpm.h b/src/daemon/rpm.h
+index bd17bec..1b90368 100644
+--- a/src/daemon/rpm.h
++++ b/src/daemon/rpm.h
+@@ -31,6 +31,17 @@
+ extern "C" {
+ #endif
+ 
++struct pkg_envra {
++    char *p_nvr;
++    char *p_epoch;
++    char *p_name;
++    char *p_version;
++    char *p_release;
++    char *p_arch;
++};
++
++void free_pkg_envra(struct pkg_envra *p);
++
+ /**
+  * Checks if an application is modified by third party.
+  * @param pPackage A package name. The package contains the application.
+@@ -64,7 +75,7 @@ int rpm_chk_fingerprint(const char* pkg);
+  * @param filename A file name.
+  * @return A package name (malloc'ed string)
+  */
+-char* rpm_get_package_nvr(const char *filename, const char *rootdir_or_NULL);
++struct pkg_envra *rpm_get_package_nvr(const char *filename, const char *rootdir_or_NULL);
+ /**
+  * Finds a main package for given file. This package contains particular
+  * file. If the file doesn't belong to any package, empty string is
+diff --git a/src/plugins/Makefile.am b/src/plugins/Makefile.am
+index ad843a9..b37989f 100644
+--- a/src/plugins/Makefile.am
++++ b/src/plugins/Makefile.am
+@@ -5,7 +5,8 @@ bin_SCRIPTS = \
+     abrt-action-analyze-core \
+     abrt-action-analyze-vmcore \
+     abrt-action-list-dsos \
+-    abrt-action-analyze-ccpp-local
++    abrt-action-analyze-ccpp-local \
++    abrt-action-save-kernel-data
+ 
+ bin_PROGRAMS = \
+     abrt-dump-oops \
+@@ -62,7 +63,8 @@ EXTRA_DIST = \
+     analyze_VMcore.xml.in \
+     abrt-action-analyze-vmcore \
+     https-utils.h \
+-    abrt-action-analyze-ccpp-local
++    abrt-action-analyze-ccpp-local \
++    abrt-action-save-kernel-data
+ 
+ abrt_dump_oops_SOURCES = \
+     abrt-dump-oops.c
+diff --git a/src/plugins/abrt-action-save-kernel-data b/src/plugins/abrt-action-save-kernel-data
+new file mode 100755
+index 0000000..7df85cf
+--- /dev/null
++++ b/src/plugins/abrt-action-save-kernel-data
+@@ -0,0 +1,31 @@
++#!/bin/bash
++#
++# Save pkg_{name, arch, version, release} for kernel oopses.
++#
++# These files are required by reporter-ureporter (mandatory
++# in uReport).
++#
++
++if [ ! -f kernel ]; then
++    echo "File 'kernel' containing kernel version not found in current directory"
++    exit 1
++fi
++
++echo "Looking for kernel package"
++kernel_version="$( sed 's/ .*//' kernel )"
++
++package="$( rpm -qf "/boot/vmlinuz-$kernel_version" )"
++if [ $? != 0 ]; then
++        echo "Can't find kernel package corresponding to '$kernel_version'"
++        echo "Can't record package version data (pkg_version, pkg_release, ...)."
++        exit 1
++fi
++
++echo "Kernel package $package found"
++rpm -q --qf "%{name}\n" "$package" > pkg_name
++rpm -q --qf "%{arch}\n" "$package" > pkg_arch
++rpm -q --qf "%{version}\n" "$package" > pkg_version
++rpm -q --qf "%{release}\n" "$package" > pkg_release
++epoch="$( rpm -q --qf "%{epoch}" "$package" )"
++test "$epoch" = "(none)"  && epoch=0
++echo "$epoch" > pkg_epoch
+diff --git a/src/plugins/koops_event.conf b/src/plugins/koops_event.conf
+index e8de75a..c25ab19 100644
+--- a/src/plugins/koops_event.conf
++++ b/src/plugins/koops_event.conf
+@@ -1,6 +1,7 @@
+ # analyze
+ EVENT=post-create analyzer=Kerneloops
+-        abrt-action-analyze-oops
++        abrt-action-analyze-oops &&
++        abrt-action-save-kernel-data
+ 
+ # If you want behavior similar to one provided by kerneloops daemon
+ # distributed by kerneloops.org - that is, if you want
+-- 
+1.8.3.1
+

@@ -1,0 +1,37 @@
+From fb5901dd9fd05bcf4b38b89d8b736fe41b78efc7 Mon Sep 17 00:00:00 2001
+From: Jakub Filak <jfilak@redhat.com>
+Date: Tue, 6 May 2014 13:29:26 +0200
+Subject: [ABRT PATCH] satyr: use native unwinder
+
+Signed-off-by: Jakub Filak <jfilak@redhat.com>
+---
+ configure.ac | 13 +++++++++++++
+ 1 file changed, 13 insertions(+)
+
+diff --git a/configure.ac b/configure.ac
+index 54a8cc3..e3cdb72 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -103,6 +103,19 @@ EVENTS_DIR='${sysconfdir}/libreport/events'
+ EVENTS_CONF_DIR='${sysconfdir}/libreport/events.d'
+ ENABLE_SOCKET_OR_DBUS='-DENABLE_DBUS=1'
+ 
++# Make satyr use GDB or elfutils/libunwind for unwinding?
++
++AC_ARG_ENABLE([native-unwinder],
++            AS_HELP_STRING([--enable-native-unwinder],
++                        [use native unwinder (libunwind or elfutils) instead of GDB (default is no)]),
++                [], [enable_native_unwinder=no])
++
++[if test "$enable_native_unwinder" = "yes"]
++[then]
++    AC_DEFINE([ENABLE_NATIVE_UNWINDER], [1], [Use elfutils/libunwind for unwinding instead of GDB.])
++[fi]
++
++
+ AC_SUBST(CONF_DIR)
+ AC_SUBST(VAR_RUN)
+ AC_SUBST(PLUGINS_CONF_DIR)
+-- 
+1.8.3.1
+

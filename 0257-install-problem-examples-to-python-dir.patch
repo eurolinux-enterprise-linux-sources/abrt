@@ -1,0 +1,37 @@
+From 3e9c8d0103cb43a1db5fc2bd792e587a8eb56d37 Mon Sep 17 00:00:00 2001
+From: Jakub Filak <jfilak@redhat.com>
+Date: Wed, 9 Oct 2013 17:07:21 +0200
+Subject: [ABRT PATCH] install problem examples to python dir
+
+Byte compiled files have different content for different architectures.
+rpmdiff requires to have equal content on all architectures for all
+corresponding documentation files.
+
+Related to rhbz#1016506
+
+Signed-off-by: Jakub Filak <jfilak@redhat.com>
+---
+ src/python-problem/examples/Makefile.am | 6 ++----
+ 1 file changed, 2 insertions(+), 4 deletions(-)
+
+diff --git a/src/python-problem/examples/Makefile.am b/src/python-problem/examples/Makefile.am
+index 079e2d4..b85b03d 100644
+--- a/src/python-problem/examples/Makefile.am
++++ b/src/python-problem/examples/Makefile.am
+@@ -1,4 +1,4 @@
+-example_python_DATA = \
++example_PYTHON = \
+ 	daemon_example.py \
+ 	edit_example.py \
+ 	list_all_example.py \
+@@ -8,6 +8,4 @@ example_python_DATA = \
+ 	watch_example.py \
+ 	thread_watch_example.py
+ 
+-example_pythondir = $(datadir)/doc/$(PACKAGE)-python-$(VERSION)/examples
+-
+-EXTRA_DIST = $(example_python_DATA)
++exampledir = $(pythondir)/problem_examples
+-- 
+1.8.3.1
+

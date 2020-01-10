@@ -1,0 +1,293 @@
+From 187e4faa270ddcbe9ecc8a452c9e0ca237804501 Mon Sep 17 00:00:00 2001
+From: Jakub Filak <jfilak@redhat.com>
+Date: Thu, 23 Apr 2015 14:40:18 +0200
+Subject: [ABRT PATCH] lib: add functions validating dump dir
+
+Move the code from abrt-server to shared library and fix the condition
+validating dump dir's path.
+
+As of now, abrt is allowed to process only direct sub-directories of the
+dump locations.
+
+Signed-off-by: Jakub Filak <jfilak@redhat.com>
+---
+ src/daemon/abrt-server.c | 48 +++++++++------------------
+ src/include/libabrt.h    |  5 +++
+ src/lib/hooklib.c        | 56 +++++++++++++++++++++++++++++++
+ tests/Makefile.am        |  3 +-
+ tests/hooklib.at         | 85 ++++++++++++++++++++++++++++++++++++++++++++++++
+ tests/testsuite.at       |  1 +
+ 6 files changed, 164 insertions(+), 34 deletions(-)
+ create mode 100644 tests/hooklib.at
+
+diff --git a/src/daemon/abrt-server.c b/src/daemon/abrt-server.c
+index 5dce4da..8dbea6c 100644
+--- a/src/daemon/abrt-server.c
++++ b/src/daemon/abrt-server.c
+@@ -90,7 +90,6 @@ static char *dir_basename;
+  */
+ static char *reason;
+ 
+-
+ /* Create a new debug dump from client session.
+  * Caller must ensure that all fields in struct client
+  * are properly filled.
+@@ -175,46 +174,29 @@ static bool starts_with(const char *str, const char *start)
+ static int delete_path(const char *dump_dir_name)
+ {
+     /* If doesn't start with "g_settings_dump_location/"... */
+-    char *dump_location = xasprintf("%s/", g_settings_dump_location);
+-    log("%s", dump_location);
+-    if (!starts_with(dump_dir_name, dump_location)
+-    /* or contains "/." anywhere (-> might contain ".." component) */
+-     || strstr(dump_dir_name + strlen(g_settings_dump_location), "/.")
+-    ) {
++    if (!dir_is_in_dump_location(dump_dir_name))
++    {
+         /* Then refuse to operate on it (someone is attacking us??) */
+-        error_msg("Bad problem directory name '%s', not deleting", dump_dir_name);
+-        free(dump_location);
++        error_msg("Bad problem directory name '%s', should start with: '%s'", dump_dir_name, g_settings_dump_location);
+         return 400; /* Bad Request */
+     }
+-    free(dump_location);
+-
+-    struct dump_dir *dd = dd_opendir(dump_dir_name, /*flags:*/ 0);
+-    if (!dd)
+-        return 404; /* Not Found */
+-
+-    if (client_uid != 0) /* not called by root */
++    if (!dir_has_correct_permissions(dump_dir_name))
+     {
+-        char client_uid_str[sizeof(long) * 3 + 2];
+-        sprintf(client_uid_str, "%ld", (long)client_uid);
+-
+-        char *uid = dd_load_text_ext(dd, FILENAME_UID, DD_FAIL_QUIETLY_ENOENT | DD_LOAD_TEXT_RETURN_NULL_ON_FAILURE);
+-        /* we assume that the dump_dir can be handled by everyone if uid == NULL
+-         * e.g: kerneloops
+-         */
+-        if (uid != NULL)
++        error_msg("Problem directory '%s' isn't owned by root:abrt or others are not restricted from access", dump_dir_name);
++        return 400; /*  */
++    }
++    if (!dump_dir_accessible_by_uid(dump_dir_name, client_uid))
++    {
++        if (errno == ENOTDIR)
+         {
+-            bool uid_matches = (strcmp(uid, client_uid_str) == 0);
+-            free(uid);
+-            if (!uid_matches)
+-            {
+-                dd_close(dd);
+-                error_msg("Dump directory '%s' can't be accessed by user with uid %ld", dump_dir_name, (long)client_uid);
+-                return 403; /* Forbidden */
+-            }
++            error_msg("Path '%s' isn't problem directory", dump_dir_name);
++            return 404; /* Not Found */
+         }
++        error_msg("Problem directory '%s' can't be accessed by user with uid %ld", dump_dir_name, (long)client_uid);
++        return 403; /* Forbidden */
+     }
+ 
+-    dd_delete(dd);
++    delete_dump_dir(dump_dir_name);
+ 
+     return 0; /* success */
+ }
+diff --git a/src/include/libabrt.h b/src/include/libabrt.h
+index 8718bdc..9774a63 100644
+--- a/src/include/libabrt.h
++++ b/src/include/libabrt.h
+@@ -46,6 +46,11 @@ char *run_unstrip_n(const char *dump_dir_name, unsigned timeout_sec);
+ #define get_backtrace abrt_get_backtrace
+ char *get_backtrace(const char *dump_dir_name, unsigned timeout_sec, const char *debuginfo_dirs);
+ 
++#define dir_is_in_dump_location abrt_dir_is_in_dump_location
++bool dir_is_in_dump_location(const char *dir_name);
++#define dir_has_correct_permissions abrt_dir_has_correct_permissions
++bool dir_has_correct_permissions(const char *dir_name);
++
+ #define g_settings_nMaxCrashReportsSize abrt_g_settings_nMaxCrashReportsSize
+ extern unsigned int  g_settings_nMaxCrashReportsSize;
+ #define g_settings_sWatchCrashdumpArchiveDir abrt_g_settings_sWatchCrashdumpArchiveDir
+diff --git a/src/lib/hooklib.c b/src/lib/hooklib.c
+index cee77e4..f07a609 100644
+--- a/src/lib/hooklib.c
++++ b/src/lib/hooklib.c
+@@ -386,3 +386,59 @@ char *get_backtrace(const char *dump_dir_name, unsigned timeout_sec, const char
+     free(args[7]);
+     return bt;
+ }
++
++bool dir_is_in_dump_location(const char *dir_name)
++{
++    unsigned len = strlen(g_settings_dump_location);
++
++    /* The path must start with "g_settings_dump_location" */
++    if (strncmp(dir_name, g_settings_dump_location, len) != 0)
++    {
++        VERB2 log("Bad parent directory: '%s' not in '%s'", g_settings_dump_location, dir_name);
++        return false;
++    }
++
++    /* and must be a sub-directory of the g_settings_dump_location dir */
++    const char *base_name = dir_name + len;
++    while (*base_name && *base_name == '/')
++        ++base_name;
++
++    if (*(base_name - 1) != '/' || !str_is_correct_filename(base_name))
++    {
++        VERB2 log("Invalid dump directory name: '%s'", base_name);
++        return false;
++    }
++
++    /* and we are sure it is a directory */
++    struct stat sb;
++    if (lstat(dir_name, &sb) < 0)
++    {
++        VERB2 perror_msg("stat('%s')", dir_name);
++        return errno== ENOENT;
++    }
++
++    return S_ISDIR(sb.st_mode);
++}
++
++bool dir_has_correct_permissions(const char *dir_name)
++{
++    if (g_settings_privatereports)
++    {
++        struct stat statbuf;
++        if (lstat(dir_name, &statbuf) != 0 || !S_ISDIR(statbuf.st_mode))
++        {
++            error_msg("Path '%s' isn't directory", dir_name);
++            return false;
++        }
++        /* Get ABRT's group gid */
++        struct group *gr = getgrnam("abrt");
++        if (!gr)
++        {
++            error_msg("Group 'abrt' does not exist");
++            return false;
++        }
++        if (statbuf.st_uid != 0 || !(statbuf.st_gid == 0 || statbuf.st_gid == gr->gr_gid) || statbuf.st_mode & 07)
++            return false;
++    }
++    return true;
++}
+diff --git a/tests/Makefile.am b/tests/Makefile.am
+index df2d4d7..d614e18 100644
+--- a/tests/Makefile.am
++++ b/tests/Makefile.am
+@@ -28,7 +28,8 @@ TESTSUITE_AT = \
+   local.at \
+   testsuite.at \
+   pyhook.at \
+-  koops-parser.at
++  koops-parser.at \
++  hooklib.at
+ 
+ EXTRA_DIST += $(TESTSUITE_AT)
+ TESTSUITE = $(srcdir)/testsuite
+diff --git a/tests/hooklib.at b/tests/hooklib.at
+new file mode 100644
+index 0000000..70631c6
+--- /dev/null
++++ b/tests/hooklib.at
+@@ -0,0 +1,85 @@
++# -*- Autotest -*-
++
++AT_BANNER([hooklib])
++
++AT_TESTFUN([dir_is_in_dump_location],
++[[
++#include "libabrt.h"
++#include <assert.h>
++
++void test(char *name, bool expected)
++{
++    if (dir_is_in_dump_location(name) != expected)
++    {
++        fprintf(stderr, "Bad: %s", name);
++        abort();
++    }
++
++    free(name);
++}
++
++int main(void)
++{
++    g_verbose = 3;
++    load_abrt_conf();
++
++    g_verbose = 3;
++
++    char *name;
++
++    assert(dir_is_in_dump_location("/") == false);
++
++    asprintf(&name, "%s", g_settings_dump_location);
++    test(name, false);
++
++    asprintf(&name, "%s..evil", g_settings_dump_location);
++    test(name, false);
++
++    asprintf(&name, "%s/", g_settings_dump_location);
++    test(name, false);
++
++    asprintf(&name, "%s///", g_settings_dump_location);
++    test(name, false);
++
++    asprintf(&name, "%s/.", g_settings_dump_location);
++    test(name, false);
++
++    asprintf(&name, "%s///.", g_settings_dump_location);
++    test(name, false);
++
++    asprintf(&name, "%s/./", g_settings_dump_location);
++    test(name, false);
++
++    asprintf(&name, "%s/.///", g_settings_dump_location);
++    test(name, false);
++
++    asprintf(&name, "%s/..", g_settings_dump_location);
++    test(name, false);
++
++    asprintf(&name, "%s///..", g_settings_dump_location);
++    test(name, false);
++
++    asprintf(&name, "%s/../", g_settings_dump_location);
++    test(name, false);
++
++    asprintf(&name, "%s/..///", g_settings_dump_location);
++    test(name, false);
++
++    asprintf(&name, "%s/good/../../../evil", g_settings_dump_location);
++    test(name, false);
++
++    asprintf(&name, "%s/good..still", g_settings_dump_location);
++    test(name, true);
++
++    asprintf(&name, "%s/good.new", g_settings_dump_location);
++    test(name, true);
++
++    asprintf(&name, "%s/.meta", g_settings_dump_location);
++    test(name, true);
++
++    asprintf(&name, "%s/..data", g_settings_dump_location);
++    test(name, true);
++
++    return 0;
++}
++]])
+diff --git a/tests/testsuite.at b/tests/testsuite.at
+index b774a63..e6ddfbe 100644
+--- a/tests/testsuite.at
++++ b/tests/testsuite.at
+@@ -3,3 +3,4 @@
+ 
+ m4_include([koops-parser.at])
+ m4_include([pyhook.at])
++m4_include([hooklib.at])
+-- 
+1.8.3.1
+

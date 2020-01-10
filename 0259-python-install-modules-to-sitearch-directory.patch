@@ -1,0 +1,27 @@
+From c1f58eda9f72ecf4dff165ef4dffbfdc5ba0051b Mon Sep 17 00:00:00 2001
+From: Jakub Filak <jfilak@redhat.com>
+Date: Fri, 31 Jan 2014 11:09:46 +0100
+Subject: [ABRT PATCH] python: install modules to sitearch directory
+
+Related to rhbz#881123
+
+Signed-off-by: Jakub Filak <jfilak@redhat.com>
+---
+ src/python-problem/problem/Makefile.am | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/python-problem/problem/Makefile.am b/src/python-problem/problem/Makefile.am
+index 25a4914..51e4f38 100644
+--- a/src/python-problem/problem/Makefile.am
++++ b/src/python-problem/problem/Makefile.am
+@@ -1,6 +1,6 @@
+ problem_PYTHON = __init__.py exception.py proxies.py tools.py watch.py config.py
+ 
+-problemdir = $(pythondir)/problem
++problemdir = $(pyexecdir)/problem
+ 
+ pyabrtdir = $(problemdir)
+ pyabrt_LTLIBRARIES = _pyabrt.la
+-- 
+1.8.3.1
+

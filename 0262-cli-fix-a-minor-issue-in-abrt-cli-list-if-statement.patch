@@ -1,0 +1,30 @@
+From 9019786f79b8c9791585ea86138efcef350419e6 Mon Sep 17 00:00:00 2001
+From: Jakub Filak <jfilak@redhat.com>
+Date: Thu, 23 May 2013 11:05:01 +0200
+Subject: [ABRT PATCH] cli: fix a minor issue in 'abrt-cli list' if statement
+
+The -n argument is supposed to display only not-yet-reported problems but the
+current implementation was doing the oposite thing. This patch corrects the
+behaviour of the -n argument.
+
+Signed-off-by: Jakub Filak <jfilak@redhat.com>
+---
+ src/cli/list.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/cli/list.c b/src/cli/list.c
+index 3f7c6cb..cf4c7c9 100644
+--- a/src/cli/list.c
++++ b/src/cli/list.c
+@@ -101,7 +101,7 @@ static bool print_crash_list(vector_of_problem_data_t *crash_list, int detailed,
+         problem_data_t *crash = get_problem_data(crash_list, i);
+         if (only_not_reported)
+         {
+-            if (!get_problem_item_content_or_NULL(crash, FILENAME_REPORTED_TO))
++            if (get_problem_item_content_or_NULL(crash, FILENAME_REPORTED_TO))
+                 continue;
+         }
+         if (since || until)
+-- 
+1.8.3.1
+

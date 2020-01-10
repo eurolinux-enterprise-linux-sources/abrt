@@ -1,0 +1,40 @@
+From 1411145a474c62fd74ef9261964b04907ac6acf0 Mon Sep 17 00:00:00 2001
+From: Jakub Filak <jfilak@redhat.com>
+Date: Tue, 7 Apr 2015 17:32:34 +0200
+Subject: [ABRT PATCH] notify: fix DBus configuration
+
+RHEL6 uses different DBus addresses and paths and I accidentally cherry-picked
+addresses and paths from master branch.
+
+Also Crash signal must contain only 3 arguments on RHEL6.
+
+Signed-off-by: Jakub Filak <jfilak@redhat.com>
+---
+ src/plugins/abrt-action-notify | 7 +++----
+ 1 file changed, 3 insertions(+), 4 deletions(-)
+
+diff --git a/src/plugins/abrt-action-notify b/src/plugins/abrt-action-notify
+index 8208106..7dcba20 100644
+--- a/src/plugins/abrt-action-notify
++++ b/src/plugins/abrt-action-notify
+@@ -92,14 +92,13 @@ def emit_crash_dbus_signal(problem_data):
+     bus = None
+     try:
+         bus = dbus.SystemBus()
+-        msg = dbus.lowlevel.SignalMessage("/org/freedesktop/problems",
+-                "org.freedesktop.problems", "Crash")
++        msg = dbus.lowlevel.SignalMessage("/com/redhat/abrt",
++                "com.redhat.abrt", "Crash")
+ 
+         # List of tuples where the first member is element name and the second
+         # member is a Boolean flag which is True if the element is required
+         arguments = ((FILENAME_PACKAGE, True), (CD_DUMPDIR, True),
+-                (FILENAME_UID, False), (FILENAME_UUID, False),
+-                (FILENAME_PACKAGE, False))
++                (FILENAME_UID, False))
+ 
+         for elem in arguments:
+             itm = problem_data.get(elem[0])
+-- 
+1.8.3.1
+

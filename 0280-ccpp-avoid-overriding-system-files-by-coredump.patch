@@ -1,0 +1,28 @@
+From fa37e937feca9b7cc05e2f426b45ed4719a01773 Mon Sep 17 00:00:00 2001
+From: Jakub Filak <jfilak@redhat.com>
+Date: Tue, 21 Apr 2015 07:54:17 +0200
+Subject: [ABRT PATCH] ccpp: avoid overriding system files by coredump
+
+Related: #1211835
+
+Signed-off-by: Jakub Filak <jfilak@redhat.com>
+---
+ src/hooks/abrt-hook-ccpp.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/hooks/abrt-hook-ccpp.c b/src/hooks/abrt-hook-ccpp.c
+index ca5d02f..cb96286 100644
+--- a/src/hooks/abrt-hook-ccpp.c
++++ b/src/hooks/abrt-hook-ccpp.c
+@@ -553,7 +553,7 @@ static bool dump_fd_info(const char *dest_filename, char *source_filename, int s
+ /* Like xopen, but on error, unlocks and deletes dd and user core */
+ static int create_or_die(const char *filename)
+ {
+-    int fd = open(filename, O_WRONLY | O_CREAT | O_TRUNC, 0640);
++    int fd = open(filename, O_WRONLY | O_CREAT | O_TRUNC | O_EXCL, 0640);
+     if (fd >= 0)
+     {
+         IGNORE_RESULT(fchown(fd, dd->dd_uid, dd->dd_gid));
+-- 
+1.8.3.1
+

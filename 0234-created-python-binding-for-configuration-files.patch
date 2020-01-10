@@ -1,0 +1,307 @@
+From 3ffa5bf433bfe70e4ac1d6bebbdbe456284c3908 Mon Sep 17 00:00:00 2001
+From: Jakub Filak <jfilak@redhat.com>
+Date: Mon, 12 May 2014 14:05:19 +0200
+Subject: [ABRT PATCH] created python binding for configuration files
+
+Signed-off-by: Jakub Filak <jfilak@redhat.com>
+---
+ src/daemon/abrt-action-save-package-data.c |  2 -
+ src/python-problem/problem/Makefile.am     | 23 +++++++++
+ src/python-problem/problem/__init__.py     |  1 +
+ src/python-problem/problem/common.h        | 23 +++++++++
+ src/python-problem/problem/pyabrt.c        | 81 ++++++++++++++++++++++++++++++
+ src/python-problem/problem/pyabrtmodule.c  | 40 +++++++++++++++
+ src/python-problem/tests/test_api.py       |  1 +
+ src/python-problem/tests/test_get.py       |  1 +
+ src/python-problem/tests/test_internal.py  |  1 +
+ src/python-problem/tests/test_list.py      |  1 +
+ src/python-problem/tests/test_tools.py     |  1 +
+ 11 files changed, 173 insertions(+), 2 deletions(-)
+ create mode 100644 src/python-problem/problem/common.h
+ create mode 100644 src/python-problem/problem/pyabrt.c
+ create mode 100644 src/python-problem/problem/pyabrtmodule.c
+
+diff --git a/src/daemon/abrt-action-save-package-data.c b/src/daemon/abrt-action-save-package-data.c
+index 21234a2..1912e08 100644
+--- a/src/daemon/abrt-action-save-package-data.c
++++ b/src/daemon/abrt-action-save-package-data.c
+@@ -20,8 +20,6 @@
+ #include "libabrt.h"
+ #include "rpm.h"
+ 
+-#define GPG_CONF "gpg_keys.conf"
+-
+ static bool   settings_bOpenGPGCheck = false;
+ static GList *settings_setOpenGPGPublicKeys = NULL;
+ static GList *settings_setBlackListedPkgs = NULL;
+diff --git a/src/python-problem/problem/Makefile.am b/src/python-problem/problem/Makefile.am
+index 81aee6d..25a4914 100644
+--- a/src/python-problem/problem/Makefile.am
++++ b/src/python-problem/problem/Makefile.am
+@@ -2,6 +2,29 @@ problem_PYTHON = __init__.py exception.py proxies.py tools.py watch.py config.py
+ 
+ problemdir = $(pythondir)/problem
+ 
++pyabrtdir = $(problemdir)
++pyabrt_LTLIBRARIES = _pyabrt.la
++
++_pyabrt_la_SOURCES = \
++    pyabrtmodule.c \
++    pyabrt.c \
++    common.h
++_pyabrt_la_CPPFLAGS = \
++    -I$(srcdir)/../../include \
++    -D_GNU_SOURCE \
++    $(PYTHON_CFLAGS) \
++    $(LIBREPORT_CFLAGS) \
++    -fPIE
++_pyabrt_la_LDFLAGS = \
++    -module \
++    -avoid-version \
++    -export-symbols-regex init_pyabrt \
++     $(LIBREPORT_CFLAGS) \
++    -Wl,-z,relro -Wl,-z,now
++_pyabrt_la_LIBADD = \
++    ../../lib/libabrt.la
++
++
+ config.py: config.py.in
+ 	sed -e s,\@DEFAULT_DUMP_LOCATION\@,/var/spool/abrt,g \
+ 		$< >$@
+diff --git a/src/python-problem/problem/__init__.py b/src/python-problem/problem/__init__.py
+index 65804a1..2c0b48d 100644
+--- a/src/python-problem/problem/__init__.py
++++ b/src/python-problem/problem/__init__.py
+@@ -3,6 +3,7 @@ import inspect
+ import datetime
+ 
+ from problem import proxies, exception, tools, watch
++from _pyabrt import *
+ 
+ JAVA = 'java'
+ SELINUX = 'selinux'
+diff --git a/src/python-problem/problem/common.h b/src/python-problem/problem/common.h
+new file mode 100644
+index 0000000..5030695
+--- /dev/null
++++ b/src/python-problem/problem/common.h
+@@ -0,0 +1,23 @@
++/*
++    Copyright (C) 2009  Abrt team.
++    Copyright (C) 2009  RedHat inc.
++
++    This program is free software; you can redistribute it and/or modify
++    it under the terms of the GNU General Public License as published by
++    the Free Software Foundation; either version 2 of the License, or
++    (at your option) any later version.
++
++    This program is distributed in the hope that it will be useful,
++    but WITHOUT ANY WARRANTY; without even the implied warranty of
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++    GNU General Public License for more details.
++
++    You should have received a copy of the GNU General Public License along
++    with this program; if not, write to the Free Software Foundation, Inc.,
++    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
++*/
++#include <Python.h>
++
++/* module-level functions */
++PyObject *p_load_conf_file(PyObject *pself, PyObject *args);
++PyObject *p_load_plugin_conf_file(PyObject *pself, PyObject *args);
+diff --git a/src/python-problem/problem/pyabrt.c b/src/python-problem/problem/pyabrt.c
+new file mode 100644
+index 0000000..992cef5
+--- /dev/null
++++ b/src/python-problem/problem/pyabrt.c
+@@ -0,0 +1,81 @@
++/*
++    Copyright (C) 2010  Abrt team.
++    Copyright (C) 2010  RedHat inc.
++
++    This program is free software; you can redistribute it and/or modify
++    it under the terms of the GNU General Public License as published by
++    the Free Software Foundation; either version 2 of the License, or
++    (at your option) any later version.
++
++    This program is distributed in the hope that it will be useful,
++    but WITHOUT ANY WARRANTY; without even the implied warranty of
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++    GNU General Public License for more details.
++
++    You should have received a copy of the GNU General Public License along
++    with this program; if not, write to the Free Software Foundation, Inc.,
++    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
++*/
++#include <Python.h>
++#include "libabrt.h"
++#include "problem_data.h"
++#include "common.h"
++
++static PyObject *
++load_settings_to_dict(const char *file, int (*loader)(const char *, map_string_t *))
++{
++    PyObject *dict = NULL;
++    map_string_t *settings = new_map_string();
++    if (!loader(file, settings))
++    {
++        PyErr_SetString(PyExc_OSError, "Failed to load configuration file.");
++        goto lacf_error;
++    }
++
++    dict = PyDict_New();
++    if (dict == NULL)
++    {
++        goto lacf_error;
++    }
++
++    map_string_iter_t iter;
++    const char *key = NULL;
++    const char *value = NULL;
++    init_map_string_iter(&iter, settings);
++    while(next_map_string_iter(&iter, &key, &value))
++    {
++        if (0 != PyDict_SetItemString(dict, key, PyString_FromString(value)))
++        {
++            goto lacf_error;
++        }
++    }
++    free_map_string(settings);
++    return dict;
++
++lacf_error:
++    Py_XDECREF(dict);
++    free_map_string(settings);
++    return NULL;
++}
++
++/* C: void load_abrt_conf_file(const char *file, map_string_t *settings); */
++PyObject *p_load_conf_file(PyObject *pself, PyObject *args)
++{
++    const char *file;
++    if (!PyArg_ParseTuple(args, "s", &file))
++    {
++        return NULL;
++    }
++    return load_settings_to_dict(file, load_abrt_conf_file);
++}
++
++/* C: void load_abrt_plugin_conf_file(const char *file, map_string_t *settings); */
++PyObject *p_load_plugin_conf_file(PyObject *pself, PyObject *args)
++{
++    const char *file;
++    if (!PyArg_ParseTuple(args, "s", &file))
++    {
++        return NULL;
++    }
++    return load_settings_to_dict(file, load_abrt_plugin_conf_file);
++}
+diff --git a/src/python-problem/problem/pyabrtmodule.c b/src/python-problem/problem/pyabrtmodule.c
+new file mode 100644
+index 0000000..e22b68b
+--- /dev/null
++++ b/src/python-problem/problem/pyabrtmodule.c
+@@ -0,0 +1,40 @@
++/*
++    Copyright (C) 2010  Abrt team.
++    Copyright (C) 2010  RedHat inc.
++
++    This program is free software; you can redistribute it and/or modify
++    it under the terms of the GNU General Public License as published by
++    the Free Software Foundation; either version 2 of the License, or
++    (at your option) any later version.
++
++    This program is distributed in the hope that it will be useful,
++    but WITHOUT ANY WARRANTY; without even the implied warranty of
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++    GNU General Public License for more details.
++
++    You should have received a copy of the GNU General Public License along
++    with this program; if not, write to the Free Software Foundation, Inc.,
++    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
++*/
++#include <Python.h>
++
++#include "common.h"
++
++static PyMethodDef module_methods[] = {
++    /* method_name, func, flags, doc_string */
++    /* for include/client.h */
++    { "load_conf_file"            , p_load_conf_file          , METH_VARARGS },
++    { "load_plugin_conf_file"     , p_load_plugin_conf_file   , METH_VARARGS },
++    { NULL }
++};
++
++#ifndef PyMODINIT_FUNC /* declarations for DLL import/export */
++#define PyMODINIT_FUNC void
++#endif
++PyMODINIT_FUNC
++init_pyabrt(void)
++{
++    PyObject *m = Py_InitModule("_pyabrt", module_methods);
++    if (!m)
++        printf("m == NULL\n");
++}
+diff --git a/src/python-problem/tests/test_api.py b/src/python-problem/tests/test_api.py
+index 1d6c6e5..4db0bc0 100755
+--- a/src/python-problem/tests/test_api.py
++++ b/src/python-problem/tests/test_api.py
+@@ -7,6 +7,7 @@ import datetime
+ import unittest
+ 
+ sys.path.insert(0, os.path.abspath(".."))
++sys.path.insert(0, os.path.abspath("../problem/.libs"))  # because of _pyabrt
+ os.environ["PATH"] = "{0}:{1}".format(os.path.abspath(".."), os.environ["PATH"])
+ 
+ from nose import tools
+diff --git a/src/python-problem/tests/test_get.py b/src/python-problem/tests/test_get.py
+index d1f0cd4..87e310c 100755
+--- a/src/python-problem/tests/test_get.py
++++ b/src/python-problem/tests/test_get.py
+@@ -5,6 +5,7 @@ import logging
+ import unittest
+ 
+ sys.path.insert(0, os.path.abspath(".."))
++sys.path.insert(0, os.path.abspath("../problem/.libs"))  # because of _pyabrt
+ os.environ["PATH"] = "{0}:{1}".format(os.path.abspath(".."), os.environ["PATH"])
+ 
+ from nose import tools
+diff --git a/src/python-problem/tests/test_internal.py b/src/python-problem/tests/test_internal.py
+index bbed9c5..a4ac090 100755
+--- a/src/python-problem/tests/test_internal.py
++++ b/src/python-problem/tests/test_internal.py
+@@ -5,6 +5,7 @@ import logging
+ import unittest
+ 
+ sys.path.insert(0, os.path.abspath(".."))
++sys.path.insert(0, os.path.abspath("../problem/.libs"))  # because of _pyabrt
+ os.environ["PATH"] = "{0}:{1}".format(os.path.abspath(".."), os.environ["PATH"])
+ 
+ from nose import tools
+diff --git a/src/python-problem/tests/test_list.py b/src/python-problem/tests/test_list.py
+index b68bcff..751c058 100755
+--- a/src/python-problem/tests/test_list.py
++++ b/src/python-problem/tests/test_list.py
+@@ -4,6 +4,7 @@ import sys
+ import logging
+ 
+ sys.path.insert(0, os.path.abspath(".."))
++sys.path.insert(0, os.path.abspath("../problem/.libs"))  # because of _pyabrt
+ os.environ["PATH"] = "{0}:{1}".format(os.path.abspath(".."), os.environ["PATH"])
+ 
+ import unittest
+diff --git a/src/python-problem/tests/test_tools.py b/src/python-problem/tests/test_tools.py
+index d32a09d..0ff8c2e 100755
+--- a/src/python-problem/tests/test_tools.py
++++ b/src/python-problem/tests/test_tools.py
+@@ -5,6 +5,7 @@ import logging
+ import unittest
+ 
+ sys.path.insert(0, os.path.abspath(".."))
++sys.path.insert(0, os.path.abspath("../problem/.libs"))  # because of _pyabrt
+ os.environ["PATH"] = "{0}:{1}".format(os.path.abspath(".."), os.environ["PATH"])
+ 
+ from nose import tools
+-- 
+1.8.3.1
+

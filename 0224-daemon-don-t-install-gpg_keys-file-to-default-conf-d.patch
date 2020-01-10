@@ -1,0 +1,28 @@
+From 36bf73fbe4b8dccfed6a78658243ae817595b4c7 Mon Sep 17 00:00:00 2001
+From: Jakub Filak <jfilak@redhat.com>
+Date: Thu, 26 Feb 2015 07:09:23 +0100
+Subject: [ABRT PATCH] daemon: don't install gpg_keys file to default conf dir
+
+Signed-off-by: Jakub Filak <jfilak@redhat.com>
+---
+ src/daemon/Makefile.am | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/src/daemon/Makefile.am b/src/daemon/Makefile.am
+index c753673..17d7b15 100644
+--- a/src/daemon/Makefile.am
++++ b/src/daemon/Makefile.am
+@@ -109,7 +109,9 @@ dist_daemonconf_DATA = \
+     gpg_keys
+ 
+ defaultdaemonconfdir = $(DEFAULT_CONF_DIR)
+-dist_defaultdaemonconf_DATA = $(dist_daemonconf_DATA)
++dist_defaultdaemonconf_DATA = \
++    abrt.conf \
++    abrt-action-save-package-data.conf
+ 
+ comredhatabrtservicedir = ${datadir}/dbus-1/system-services
+ dist_comredhatabrtservice_DATA = com.redhat.abrt.service
+-- 
+1.8.3.1
+

@@ -1,0 +1,82 @@
+From 695550208ea80870c61214d5f9d7d6c91870e77a Mon Sep 17 00:00:00 2001
+From: Jakub Filak <jfilak@redhat.com>
+Date: Thu, 26 Feb 2015 11:54:58 +0100
+Subject: [ABRT PATCH] hooks: save type along with analyzer
+
+satyr-0.16 requires type in dump directories
+
+Signed-off-by: Jakub Filak <jfilak@redhat.com>
+---
+ src/daemon/abrt-server.c               | 3 +++
+ src/hooks/abrt-hook-ccpp.c             | 1 +
+ src/hooks/abrt_exception_handler.py.in | 1 +
+ src/plugins/abrt-dump-oops.c           | 1 +
+ 4 files changed, 6 insertions(+)
+
+diff --git a/src/daemon/abrt-server.c b/src/daemon/abrt-server.c
+index 602a41a..d821283 100644
+--- a/src/daemon/abrt-server.c
++++ b/src/daemon/abrt-server.c
+@@ -81,6 +81,7 @@ static char *executable;
+ static char *backtrace;
+ /* "python", "ruby" etc. */
+ static char *analyzer;
++static char *type;
+ /* Directory base name: "pyhook", "ruby" etc. */
+ static char *dir_basename;
+ /* Crash reason.
+@@ -117,6 +118,7 @@ static int create_debug_dump()
+     dd_save_text(dd, "abrt_version", VERSION);
+ 
+     dd_save_text(dd, FILENAME_ANALYZER, analyzer);
++    dd_save_text(dd, FILENAME_TYPE, type != NULL ? type : analyzer);
+     dd_save_text(dd, FILENAME_EXECUTABLE, executable);
+     dd_save_text(dd, FILENAME_BACKTRACE, backtrace);
+     dd_save_text(dd, FILENAME_REASON, reason);
+@@ -291,6 +293,7 @@ static void process_message(const char *message)
+     HANDLE_INCOMING_STRING("BACKTRACE=", backtrace, MAX_BACKTRACE_SIZE, false, true);
+     HANDLE_INCOMING_STRING("BASENAME=", dir_basename, 100, true, false);
+     HANDLE_INCOMING_STRING("ANALYZER=", analyzer, 100, true, true);
++    HANDLE_INCOMING_STRING("TYPE=", type, 100, true, true);
+     HANDLE_INCOMING_STRING("REASON=", reason, 512, false, true);
+ 
+ #undef HANDLE_INCOMING_STRING
+diff --git a/src/hooks/abrt-hook-ccpp.c b/src/hooks/abrt-hook-ccpp.c
+index 5f28f5c..f51bcd8 100644
+--- a/src/hooks/abrt-hook-ccpp.c
++++ b/src/hooks/abrt-hook-ccpp.c
+@@ -717,6 +717,7 @@ int main(int argc, char** argv)
+         free(dest_filename);
+ 
+         dd_save_text(dd, FILENAME_ANALYZER, "CCpp");
++        dd_save_text(dd, FILENAME_TYPE, "CCpp");
+         dd_save_text(dd, FILENAME_EXECUTABLE, executable);
+         dd_save_text(dd, FILENAME_PID, pid_str);
+         if (user_pwd)
+diff --git a/src/hooks/abrt_exception_handler.py.in b/src/hooks/abrt_exception_handler.py.in
+index 9b56da5..b034bc3 100644
+--- a/src/hooks/abrt_exception_handler.py.in
++++ b/src/hooks/abrt_exception_handler.py.in
+@@ -44,6 +44,7 @@ def write_dump(tb):
+             s.sendall("PID=%s\0" % os.getpid())
+             s.sendall("EXECUTABLE=%s\0" % executable)
+             s.sendall("ANALYZER=Python\0")
++            s.sendall("TYPE=Python\0")
+             s.sendall("BASENAME=pyhook\0")
+             # This handler puts a short(er) crash descr in 1st line of the backtrace.
+             # Example:
+diff --git a/src/plugins/abrt-dump-oops.c b/src/plugins/abrt-dump-oops.c
+index 0dbe7fe..519c056 100644
+--- a/src/plugins/abrt-dump-oops.c
++++ b/src/plugins/abrt-dump-oops.c
+@@ -162,6 +162,7 @@ static unsigned save_oops_to_dump_dir(GList *oops_list, unsigned oops_cnt)
+             dd_create_basic_files(dd, /*uid:*/ my_euid, NULL);
+             dd_save_text(dd, "abrt_version", VERSION);
+             dd_save_text(dd, FILENAME_ANALYZER, "Kerneloops");
++            dd_save_text(dd, FILENAME_TYPE, "Kerneloops");
+             dd_save_text(dd, FILENAME_KERNEL, first_line);
+             if (cmdline_str)
+                 dd_save_text(dd, FILENAME_CMDLINE, cmdline_str);
+-- 
+1.8.3.1
+

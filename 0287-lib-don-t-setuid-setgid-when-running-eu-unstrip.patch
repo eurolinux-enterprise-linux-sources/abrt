@@ -1,0 +1,60 @@
+From a51b8a150367d3495ee3d4f537f3ae54eb15a93e Mon Sep 17 00:00:00 2001
+From: Jakub Filak <jfilak@redhat.com>
+Date: Wed, 6 May 2015 13:48:41 +0200
+Subject: [ABRT PATCH] lib: don't setuid/setgid when running eu-unstrip
+
+As of commit e065c47bc862d1582e5be100470c252b7cd6b038 all dump directories are
+owned by the user abrt and the group root. Hence, when we run eu-unstrip with
+UID of the crashed program the eu-unstrip process has no permission to read
+dump directory files.
+
+Related: #1212868
+
+Signed-off-by: Jakub Filak <jfilak@redhat.com>
+---
+ src/lib/hooklib.c | 21 +--------------------
+ 1 file changed, 1 insertion(+), 20 deletions(-)
+
+diff --git a/src/lib/hooklib.c b/src/lib/hooklib.c
+index f07a609..c369339 100644
+--- a/src/lib/hooklib.c
++++ b/src/lib/hooklib.c
+@@ -173,26 +173,7 @@ static char* exec_vp(char **args, int redirect_stderr, unsigned exec_timeout_sec
+ 
+ char *run_unstrip_n(const char *dump_dir_name, unsigned timeout_sec)
+ {
+-    struct dump_dir *dd = dd_opendir(dump_dir_name, /*flags:*/ 0);
+-    if (!dd)
+-        return NULL;
+-
+-    char *uid_str = dd_load_text_ext(dd, FILENAME_UID, DD_FAIL_QUIETLY_ENOENT | DD_LOAD_TEXT_RETURN_NULL_ON_FAILURE);
+-    dd_close(dd);
+-    uid_t uid = -1L;
+-    if (uid_str)
+-    {
+-        uid = xatoi_positive(uid_str);
+-        free(uid_str);
+-        if (uid == geteuid())
+-        {
+-            uid = -1L; /* no need to setuid/gid if we are already under right uid */
+-        }
+-    }
+-
+     int flags = EXECFLG_INPUT_NUL | EXECFLG_OUTPUT | EXECFLG_SETSID | EXECFLG_QUIET;
+-    if (uid != (uid_t)-1L)
+-        flags |= EXECFLG_SETGUID;
+     VERB1 flags &= ~EXECFLG_QUIET;
+     int pipeout[2];
+     char* args[4];
+@@ -200,7 +181,7 @@ char *run_unstrip_n(const char *dump_dir_name, unsigned timeout_sec)
+     args[1] = xasprintf("--core=%s/"FILENAME_COREDUMP, dump_dir_name);
+     args[2] = (char*)"-n";
+     args[3] = NULL;
+-    pid_t child = fork_execv_on_steroids(flags, args, pipeout, /*env_vec:*/ NULL, /*dir:*/ NULL, uid);
++    pid_t child = fork_execv_on_steroids(flags, args, pipeout, /*env_vec:*/ NULL, /*dir:*/ NULL, /*unused(uid)*/ 0);
+     free(args[1]);
+ 
+     /* Bugs in unstrip or corrupted coredumps can cause it to enter infinite loop.
+-- 
+1.8.3.1
+

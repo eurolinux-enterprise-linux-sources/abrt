@@ -1,0 +1,35 @@
+From e4f1ff7028a133e2fdb764c766c5c9ce9a4a2610 Mon Sep 17 00:00:00 2001
+From: Richard Marko <rmarko@redhat.com>
+Date: Thu, 2 Jan 2014 16:26:37 +0100
+Subject: [ABRT PATCH] cli: print autoreporting notification to stderr
+
+Fixes testsuite breakage.
+
+Closes #783
+
+Signed-off-by: Richard Marko <rmarko@redhat.com>
+---
+ src/cli/list.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/src/cli/list.c b/src/cli/list.c
+index 1919551..f228bb6 100644
+--- a/src/cli/list.c
++++ b/src/cli/list.c
+@@ -135,10 +135,10 @@ int cmd_list(int argc, const char **argv)
+     if (!g_settings_autoreporting)
+     {
+         if (output)
+-            putchar('\n');
++            putc('\n', stderr);
+ 
+-        printf(_("The Autoreporting feature is disabled. Please consider enabling it by issuing\n"
+-                 "'abrt-auto-reporting enabled' as a user with root privileges\n"));
++        fprintf(stderr, _("The Autoreporting feature is disabled. Please consider enabling it by issuing\n"
++                          "'abrt-auto-reporting enabled' as a user with root privileges\n"));
+     }
+ 
+     return 0;
+-- 
+1.8.3.1
+

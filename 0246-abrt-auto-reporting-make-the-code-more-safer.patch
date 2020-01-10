@@ -1,0 +1,45 @@
+From 745111f9d6ccb51e41692f0c14052e4ab1de8bf5 Mon Sep 17 00:00:00 2001
+From: Jakub Filak <jfilak@redhat.com>
+Date: Fri, 9 Jan 2015 16:34:00 +0100
+Subject: [ABRT PATCH] abrt-auto-reporting: make the code more safer
+
+Uncovered by coverity.
+
+Related: #1174833
+
+Signed-off-by: Jakub Filak <jfilak@redhat.com>
+---
+ src/daemon/abrt-auto-reporting.c | 10 +++++++++-
+ 1 file changed, 9 insertions(+), 1 deletion(-)
+
+diff --git a/src/daemon/abrt-auto-reporting.c b/src/daemon/abrt-auto-reporting.c
+index f50c4c2..f3b4ed0 100644
+--- a/src/daemon/abrt-auto-reporting.c
++++ b/src/daemon/abrt-auto-reporting.c
+@@ -50,6 +50,8 @@ const char *const REPORTING_STATES[8][2] = {
+ static int
+ set_abrt_reporting(map_string_t *conf, const char *opt_value)
+ {
++    assert(opt_value != NULL || !"BUG: invalid auto-reporting state");
++
+     const char *const def_value = REPORTING_STATES[0][1];
+     const char *const cur_value = get_map_string_item_or_NULL(conf, OPTION_NAME);
+ 
+@@ -356,7 +358,13 @@ int main(int argc, char *argv[])
+         goto finito;
+     }
+ 
+-    exit_code = set_abrt_reporting(conf, opt_value) ? EXIT_SUCCESS : EXIT_FAILURE;
++    if (opt_value == NULL)
++    {   /* calm coverity: see 'if (argc ...)' statements above. 0 exits, >1 fails, 1 sets opt_value */
++        error_msg("BUG: invalid command line arguments");
++        exit_code = EXIT_FAILURE;
++    }
++    else
++        exit_code = set_abrt_reporting(conf, opt_value) ? EXIT_SUCCESS : EXIT_FAILURE;
+ 
+     if (exit_code == EXIT_FAILURE)
+     {
+-- 
+1.8.3.1
+

@@ -1,0 +1,31 @@
+From 1a1599d8a05b9730eea894407a50a30308cf02fb Mon Sep 17 00:00:00 2001
+From: Jakub Filak <jfilak@redhat.com>
+Date: Wed, 15 Apr 2015 12:14:52 +0200
+Subject: [ABRT PATCH] ccpp: do not read data from root directories
+
+Users are allowed to modify /proc/[pid]/root to any directory by running
+their own MOUNT namespace.
+
+Related: #1211835
+
+Signed-off-by: Jakub Filak <jfilak@redhat.com>
+---
+ src/hooks/abrt-hook-ccpp.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/hooks/abrt-hook-ccpp.c b/src/hooks/abrt-hook-ccpp.c
+index f2f4d8d..42f7127 100644
+--- a/src/hooks/abrt-hook-ccpp.c
++++ b/src/hooks/abrt-hook-ccpp.c
+@@ -862,7 +862,7 @@ int main(int argc, char** argv)
+     {
+         char *rootdir = get_rootdir(pid);
+ 
+-        dd_create_basic_files(dd, fsuid, (rootdir && strcmp(rootdir, "/") != 0) ? rootdir : NULL);
++        dd_create_basic_files(dd, fsuid, NULL);
+ 
+         char source_filename[sizeof("/proc/%lu/somewhat_long_name") + sizeof(long)*3];
+         int source_base_ofs = sprintf(source_filename, "/proc/%lu/smaps", (long)pid);
+-- 
+1.8.3.1
+

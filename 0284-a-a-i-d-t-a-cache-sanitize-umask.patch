@@ -1,0 +1,31 @@
+From f9bc40f55942483c622270f6da90bae170188ab1 Mon Sep 17 00:00:00 2001
+From: Jakub Filak <jfilak@redhat.com>
+Date: Wed, 29 Apr 2015 14:13:57 +0200
+Subject: [ABRT PATCH] a-a-i-d-t-a-cache: sanitize umask
+
+We cannot trust anything when running suided program.
+
+Related: #1216962
+
+Signed-off-by: Jakub Filak <jfilak@redhat.com>
+---
+ src/plugins/abrt-action-install-debuginfo-to-abrt-cache.c | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/src/plugins/abrt-action-install-debuginfo-to-abrt-cache.c b/src/plugins/abrt-action-install-debuginfo-to-abrt-cache.c
+index 1fbdb96..1317745 100644
+--- a/src/plugins/abrt-action-install-debuginfo-to-abrt-cache.c
++++ b/src/plugins/abrt-action-install-debuginfo-to-abrt-cache.c
+@@ -157,6 +157,9 @@ int main(int argc, char **argv)
+             putenv((char*) "PATH=/usr/sbin:/sbin:/usr/bin:/bin");
+         else
+             putenv((char*) "PATH=/usr/bin:/bin");
++
++        /* Use safe umask */
++        umask(0022);
+     }
+ 
+     execvp(EXECUTABLE, (char **)args);
+-- 
+1.8.3.1
+

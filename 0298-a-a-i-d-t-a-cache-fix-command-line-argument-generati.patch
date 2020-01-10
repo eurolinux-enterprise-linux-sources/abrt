@@ -1,0 +1,32 @@
+From 086a25b6cd37e95a8bac421267a99ceda8adf39f Mon Sep 17 00:00:00 2001
+From: Jakub Filak <jfilak@redhat.com>
+Date: Wed, 20 May 2015 15:22:58 +0200
+Subject: [ABRT PATCH] a-a-i-d-t-a-cache: fix command line argument generation
+
+Empty string in the list of arguments for execvp causes problems (-y
+was ignored).
+
+Related: #1216962
+
+Signed-off-by: Jakub Filak <jfilak@redhat.com>
+---
+ src/plugins/abrt-action-install-debuginfo-to-abrt-cache.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/src/plugins/abrt-action-install-debuginfo-to-abrt-cache.c b/src/plugins/abrt-action-install-debuginfo-to-abrt-cache.c
+index 5ce5b7c..2fadcd4 100644
+--- a/src/plugins/abrt-action-install-debuginfo-to-abrt-cache.c
++++ b/src/plugins/abrt-action-install-debuginfo-to-abrt-cache.c
+@@ -115,7 +115,8 @@ int main(int argc, char **argv)
+         args[i++] = EXECUTABLE;
+         args[i++] = "--ids";
+         args[i++] = (build_ids_self_fd != NULL) ? build_ids_self_fd : "-";
+-        args[i++] = verbs[g_verbose <= 3 ? g_verbose : 3];
++        if (g_verbose > 0)
++            args[i++] = verbs[g_verbose <= 3 ? g_verbose : 3];
+         if ((opts & OPT_y))
+             args[i++] = "-y";
+         if ((opts & OPT_e))
+-- 
+1.8.3.1
+

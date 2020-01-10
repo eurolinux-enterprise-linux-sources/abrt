@@ -1,0 +1,31 @@
+From 5a03e0e890464c1d7bb934c3eb819253869b5ffe Mon Sep 17 00:00:00 2001
+From: Jakub Filak <jfilak@redhat.com>
+Date: Wed, 1 Apr 2015 17:05:02 +0200
+Subject: [ABRT PATCH] abrt_event: run sosreport with boot plugin instead of
+ bootloader
+
+The plugin has been renamed to 'boot'.
+
+Resolves: rhbz#1208154
+
+Signed-off-by: Jakub Filak <jfilak@redhat.com>
+---
+ src/daemon/abrt_event.conf | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/daemon/abrt_event.conf b/src/daemon/abrt_event.conf
+index 6d56193..b43074f 100644
+--- a/src/daemon/abrt_event.conf
++++ b/src/daemon/abrt_event.conf
+@@ -73,7 +73,7 @@ EVENT=notify-dup package!= uid!=
+ # if you would rather perform this collection later):
+ EVENT=post-create
+         nice sosreport --tmp-dir "$DUMP_DIR" --batch \
+-                --only=anaconda --only=bootloader --only=devicemapper \
++                --only=anaconda --only=boot --only=devicemapper \
+                 --only=filesys --only=hardware --only=kernel --only=libraries \
+                 --only=memory --only=networking --only=nfsserver --only=pam \
+                 --only=process --only=rpm -k rpm.rpmva=off --only=ssh \
+-- 
+1.8.3.1
+

@@ -1,0 +1,55 @@
+From 4369332f1699f937746450045a2407dac22ecf68 Mon Sep 17 00:00:00 2001
+From: Jakub Filak <jfilak@redhat.com>
+Date: Fri, 27 Feb 2015 12:42:41 +0100
+Subject: [ABRT PATCH] abrt-gui: don't consider ureported problems to be
+ reported
+
+The auto-reporting creates reported_to file.
+
+Signed-off-by: Jakub Filak <jfilak@redhat.com>
+---
+ src/gui-gtk/main.c | 21 ++++++++++++++++++++-
+ 1 file changed, 20 insertions(+), 1 deletion(-)
+
+diff --git a/src/gui-gtk/main.c b/src/gui-gtk/main.c
+index 08b3484..aeb566d 100644
+--- a/src/gui-gtk/main.c
++++ b/src/gui-gtk/main.c
+@@ -85,6 +85,25 @@ static char *get_last_line(const char* msg)
+     return xstrndup(start, end - start);
+ }
+ 
++int problem_is_reported(const char *reported_to)
++{
++    if (reported_to == NULL)
++        return 0;
++
++    const char *iter = reported_to;
++    while (*iter != '\0')
++    {
++        if (prefixcmp(iter, "ABRT Server:") != 0 && prefixcmp(iter, "uReport:") != 0)
++            return 1;
++
++        iter = strchrnul(iter, '\n');
++        if (*iter == '\n')
++            ++iter;
++    }
++
++    return 0;
++}
++
+ static void add_directory_to_dirlist(const char *dirname)
+ {
+     /* Silently ignore *any* errors, not only EACCES.
+@@ -148,7 +167,7 @@ static void add_directory_to_dirlist(const char *dirname)
+     GtkListStore *list_store;
+ 
+     char *subm_status = NULL;
+-    if (msg)
++    if (problem_is_reported(msg))
+     {
+         list_store = s_reported_dumps_list_store;
+         subm_status = get_last_line(msg);
+-- 
+1.8.3.1
+

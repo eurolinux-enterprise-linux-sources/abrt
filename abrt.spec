@@ -9,14 +9,14 @@
 %define desktopvendor fedora
 %endif
 
-# CAUTION:
+# Attention please:
 # On RHEL-6.8 and later, please consider removing the migration script from
 # %%post which removes the old dump directories (#1212868)
 
 Summary: Automatic bug detection and reporting tool
 Name: abrt
 Version: 2.0.8
-Release: 26.sl6.1
+Release: 34.sl6
 License: GPLv2+
 Group: Applications/System
 URL: https://fedorahosted.org/abrt/
@@ -166,37 +166,102 @@ Patch136: 0208-add-man-page-for-abrt-harvest-vmcore.patch
 Patch137: 0210-abrt_event-fix-post-create-reporter-uploader-example.patch
 Patch138: 0211-koops-provide-general-hints-and-tips-for-useless-bac.patch
 Patch139: 0213-koops-fix-a-use-after-free-bug-uncoverd-by-coverity.patch
-# $ git format-patch 2.0.8-26.el6 -N --start-number 214 --topo-order
-Patch140: 0214-a-a-save-package-data-turn-off-reading-data-from-roo.patch
-Patch141: 0215-ccpp-fix-symlink-race-conditions.patch
-Patch142: 0216-ccpp-do-not-read-data-from-root-directories.patch
-Patch143: 0217-ccpp-open-file-for-dump_fd_info-with-O_EXCL.patch
-Patch144: 0218-ccpp-postpone-changing-ownership-of-new-dump-directo.patch
-Patch145: 0219-ccpp-create-dump-directory-without-parents.patch
-Patch146: 0220-ccpp-do-not-override-existing-files-by-compat-cores.patch
-Patch147: 0221-ccpp-do-not-use-value-of-proc-PID-cwd-for-chdir.patch
-Patch148: 0222-ccpp-harden-dealing-with-UID-GID.patch
-Patch149: 0223-ccpp-check-for-overflow-in-abrt-coredump-path-creati.patch
-Patch150: 0224-ccpp-emulate-selinux-for-creation-of-compat-cores.patch
-Patch151: 0225-make-the-dump-directories-owned-by-root-by-default.patch
-Patch152: 0226-ccpp-avoid-overriding-system-files-by-coredump.patch
-#Patch153: 0227-spec-add-libselinux-devel-to-BRs.patch
-Patch154: 0228-lib-add-functions-validating-dump-dir.patch
-Patch155: 0229-a-a-i-d-t-a-cache-sanitize-arguments.patch
-Patch156: 0230-a-a-i-d-t-a-cache-sanitize-umask.patch
-Patch157: 0231-ccpp-revert-the-UID-GID-changes-if-user-core-fails.patch
-Patch158: 0232-upload-validate-and-sanitize-uploaded-dump-directori.patch
-Patch159: 0233-lib-don-t-setuid-setgid-when-running-eu-unstrip.patch
-Patch160: 0234-lib-avoid-race-conditions-while-going-trough-all-dum.patch
-Patch161: 0235-daemon-harden-against-race-conditions-in-DELETE.patch
-Patch162: 0236-daemon-dbus-allow-only-root-to-create-CCpp-Koops-vmc.patch
-Patch163: 0237-cli-adapt-to-PrivateReports.patch
-Patch164: 0238-gui-adapt-to-PrivateReports.patch
-#Patch165: 0239-spec-add-abrt-consolehelper-applications.patch
-#Patch166: 0240-spec-add-usermode-and-pam-to-Requires.patch
-Patch167: 0241-ccpp-do-not-unlink-failed-and-big-user-cores.patch
-Patch168: 0242-abrtd-do-not-log-new-client-connected.patch
-Patch169:	abrt-add-sl-gpg-keys.patch
+# $ git format-patch 2.0.8-26.el6 --topo-order -N --start-number 214 -o /home/repos/rhel/abrt
+Patch214: 0214-switch-from-btparser-to-satyr.patch
+Patch215: 0215-generate-pkg_-files-required-for-uReport.patch
+#Patch216: 0216-spec-install-abrt-action-save-kernel-data.patch
+Patch217: 0217-satyr-use-native-unwinder.patch
+#Patch218: 0218-spec-use-native-unwinder.patch
+Patch219: 0219-refactorize-reflect-recent-changes-in-map_string_t.patch
+Patch220: 0220-add-Autoreporting-configuration-options.patch
+Patch221: 0221-Load-conf-from-usr-share-abrt-conf.d-and-etc-abrt.patch
+Patch222: 0222-add-augeas-module-for-abrt-configuration-files.patch
+#Patch223: 0223-spec-add-abrt-s-augeas-module.patch
+Patch224: 0224-daemon-don-t-install-gpg_keys-file-to-default-conf-d.patch
+#Patch225: 0225-spec-install-conf-to-usr-share-abrt-conf.d.patch
+Patch226: 0226-Make-problem_api.c-easier-to-comprehend.patch
+Patch227: 0227-abrt-cli-list-implement-since-and-until.patch
+Patch228: 0228-abrt-action-notify.patch
+#Patch229: 0229-spec-install-abrt-action-notify.patch
+Patch230: 0230-abrt-action-ureport.patch
+#Patch231: 0231-spec-install-abrt-action-ureport.patch
+Patch232: 0232-introduce-abrt-auto-reporting-utility.patch
+#Patch233: 0233-spec-install-abrt-auto-reporting.patch
+Patch234: 0234-created-python-binding-for-configuration-files.patch
+#Patch235: 0235-spec-abrt-python-is-no-longer-noarch.patch
+Patch236: 0236-define-report_uReport-events.patch
+#Patch237: 0237-spec-install-post_report.patch
+Patch238: 0238-abrt-cli-list-list-all-problems-by-default.patch
+Patch239: 0239-a-a-s-package-data-move-parse_list-to-the-shared-lib.patch
+Patch240: 0240-plugins-add-abrt-action-generate-machine-id.patch
+#Patch241: 0241-spec-add-abrt-action-generate-machine-id.patch
+Patch242: 0242-ureport-attach-contact-email-if-configured.patch
+Patch243: 0243-a-a-g-machine-id-add-systemd-s-machine-id.patch
+Patch244: 0244-a-a-g-machine-id-suppress-its-failures-in-abrt_event.patch
+Patch245: 0245-auto-reporting-add-options-to-specify-auth-type.patch
+Patch246: 0246-abrt-auto-reporting-make-the-code-more-safer.patch
+Patch247: 0247-hooks-save-type-along-with-analyzer.patch
+#Patch248: 0248-spec-fix-requires-for-python-dbus.patch
+Patch249: 0249-cli-print-autoreporting-notification-to-stderr.patch
+Patch250: 0250-cli-list-show-a-hint-about-creating-a-case-in-RHTS.patch
+Patch251: 0251-console-notofications-robustidize-the-implementation.patch
+Patch252: 0252-abrt-cli-make-status-help-message-more-precise.patch
+Patch253: 0253-abrt-gui-don-t-consider-ureported-problems-to-be-rep.patch
+Patch254: 0254-ureport-rename-the-event-to-submit_uReport.patch
+#Patch255: 0255-spec-add-python-argparse-to-BRs.patch
+Patch256: 0256-abrt_event-fix-notify-events.patch
+Patch257: 0257-install-problem-examples-to-python-dir.patch
+#Patch258: 0258-spec-move-examples-to-abrt-python-doc-package.patch
+Patch259: 0259-python-install-modules-to-sitearch-directory.patch
+#Patch260: 0260-spec-abrt-python-s-files-to-arch-specific-dir.patch
+#Patch261: 0261-spec-add-explict-package-requirement-on-abrt-libs-to.patch
+Patch262: 0262-cli-fix-a-minor-issue-in-abrt-cli-list-if-statement.patch
+Patch263: 0263-abrt_event-run-sosreport-with-boot-plugin-instead-of.patch
+Patch264: 0264-notify-fix-DBus-configuration.patch
+Patch265: 0265-machineid-disable-systemd-generator.patch
+Patch266: 0266-machineid-don-t-use-deprecated-Python-API.patch
+# $ git format-patch 2.0.8-30.el6 --topo-order -N --start-number 267 -o /home/repos/rhel/abrt
+Patch267: 0267-ccpp-do-not-log-to-syslog-while-dumping-syslog.patch
+Patch268: 0268-a-a-save-package-data-turn-off-reading-data-from-roo.patch
+Patch269: 0269-ccpp-fix-symlink-race-conditions.patch
+Patch270: 0270-ccpp-do-not-read-data-from-root-directories.patch
+Patch271: 0271-ccpp-open-file-for-dump_fd_info-with-O_EXCL.patch
+Patch272: 0272-ccpp-postpone-changing-ownership-of-new-dump-directo.patch
+Patch273: 0273-ccpp-create-dump-directory-without-parents.patch
+Patch274: 0274-ccpp-do-not-override-existing-files-by-compat-cores.patch
+Patch275: 0275-ccpp-do-not-use-value-of-proc-PID-cwd-for-chdir.patch
+Patch276: 0276-ccpp-harden-dealing-with-UID-GID.patch
+Patch277: 0277-ccpp-check-for-overflow-in-abrt-coredump-path-creati.patch
+Patch278: 0278-ccpp-emulate-selinux-for-creation-of-compat-cores.patch
+Patch279: 0279-make-the-dump-directories-owned-by-root-by-default.patch
+Patch280: 0280-ccpp-avoid-overriding-system-files-by-coredump.patch
+#Patch281: 0281-spec-add-libselinux-devel-to-BRs.patch
+Patch282: 0282-lib-add-functions-validating-dump-dir.patch
+Patch283: 0283-a-a-i-d-t-a-cache-sanitize-arguments.patch
+Patch284: 0284-a-a-i-d-t-a-cache-sanitize-umask.patch
+Patch285: 0285-ccpp-revert-the-UID-GID-changes-if-user-core-fails.patch
+Patch286: 0286-upload-validate-and-sanitize-uploaded-dump-directori.patch
+Patch287: 0287-lib-don-t-setuid-setgid-when-running-eu-unstrip.patch
+Patch288: 0288-lib-avoid-race-conditions-while-going-trough-all-dum.patch
+Patch289: 0289-daemon-harden-against-race-conditions-in-DELETE.patch
+Patch290: 0290-daemon-dbus-allow-only-root-to-create-CCpp-Koops-vmc.patch
+Patch291: 0291-cli-adapt-to-PrivateReports.patch
+Patch292: 0292-gui-adapt-to-PrivateReports.patch
+#Patch293: 0293-spec-add-abrt-consolehelper-applications.patch
+# $ git format-patch 2.0.8-31.el6 --topo-order -N --start-number 294 -o /home/repos/rhel/abrt
+Patch294: 0294-abrt.conf-describe-PrivateReports-accurately.patch
+#Patch295: 0295-spec-add-usermode-and-pam-to-Requires.patch
+# $ git format-patch 2.0.8-32.el6 --topo-order -N --start-number 296 -o /home/repos/rhel/abrt
+Patch296: 0296-ccpp-do-not-unlink-failed-and-big-user-cores.patch
+Patch297: 0297-a-a-i-d-t-a-cache-don-t-open-the-build_ids-file-as-a.patch
+Patch298: 0298-a-a-i-d-t-a-cache-fix-command-line-argument-generati.patch
+Patch299: 0299-abrtd-check-fs-atrributes-of-new-directories.patch
+Patch300: 0300-abrtd-do-not-log-new-client-connected.patch
+Patch301: 0301-cli-correct-passing-arguments-to-child-process.patch
+# $ git format-patch 2.0.8-33.el6 --topo-order -N --start-number 302 -o /home/repos/rhel/abrt
+Patch302: 0302-ccpp-fix-an-infinite-loop-in-parsing-of-proc-net-uni.patch
+Patch303: 0303-ccpp-correct-parser-of-proc-net-unix.patch
+Patch304:	abrt-add-sl-gpg-keys.patch
 
 BuildRequires: dbus-devel
 BuildRequires: gtk2-devel
@@ -212,14 +277,16 @@ BuildRequires: libtool
 BuildRequires: nss-devel
 BuildRequires: asciidoc
 BuildRequires: xmlto
-BuildRequires: libreport-devel >= 2.0.9-21.el6_6.1
-BuildRequires: btparser-devel
+BuildRequires: libreport-devel >= 2.0.9-23
+BuildRequires: satyr-devel >= 0.16
 BuildRequires: elfutils-devel
 BuildRequires: elfutils-libelf-devel
 BuildRequires: binutils-devel
+BuildRequires: augeas
 BuildRequires: libselinux-devel
 
-Requires: libreport >= 2.0.9-21.el6_6.1
+Requires: libreport >= 2.0.9-23
+Requires: satyr >= 0.11
 
 %if %{with systemd}
 Requires: systemd-units
@@ -233,6 +300,10 @@ Obsoletes: abrt-plugin-sqlite3 > 0.0.1
 Obsoletes: abrt-plugin-runapp > 0.0.1
 Obsoletes: abrt-plugin-filetransfer > 0.0.1
 Obsoletes: abrt-plugin-sosreport > 0.0.1
+Requires: %{name}-python = %{version}-%{release}
+Requires: dbus-python
+Requires: python-dmidecode
+Requires: libreport-plugin-ureport
 
 %description
 %{name} is a tool to help users to detect defects in applications and
@@ -383,14 +454,25 @@ to the shell
 Summary: ABRT Python API
 Group: System Environment/Libraries
 Requires: %{name} = %{version}-%{release}
+Requires: %{name}-libs = %{version}-%{release}
 Requires: pygobject2
 BuildRequires: python-sphinx
 BuildRequires: python-nose
-BuildArch: noarch
 
 %description python
 High-level API for querying, creating and manipulating
 problems handled by ABRT in Python.
+
+%package python-doc
+Summary: ABRT Python API Documentation
+Group: Documentation
+BuildArch: noarch
+BuildRequires: python2-devel
+Requires: %{name} = %{version}-%{release}
+Requires: %{name}-python = %{version}-%{release}
+
+%description python-doc
+Examples and documentation for ABRT Python API.
 
 %prep
 %setup -q
@@ -534,37 +616,97 @@ problems handled by ABRT in Python.
 %patch137 -p1
 %patch138 -p1
 %patch139 -p1
-%patch140 -p1
-%patch141 -p1
-%patch142 -p1
-%patch143 -p1
-%patch144 -p1
-%patch145 -p1
-%patch146 -p1
-%patch147 -p1
-%patch148 -p1
-%patch149 -p1
-%patch150 -p1
-%patch151 -p1
-%patch152 -p1
-#Patch153: 0227-spec-add-libselinux-devel-to-BRs.patch
-%patch154 -p1
-%patch155 -p1
-%patch156 -p1
-%patch157 -p1
-%patch158 -p1
-%patch159 -p1
-%patch160 -p1
-%patch161 -p1
-%patch162 -p1
-%patch163 -p1
-%patch164 -p1
-#Patch165: 0239-spec-add-abrt-consolehelper-applications.patch
-#Patch166: 0240-spec-add-usermode-and-pam-to-Requires.patch
-%patch167 -p1
-%patch168 -p1
-%patch169 -p1
-
+%patch214 -p1
+%patch215 -p1
+#%patch216 -p1
+%patch217 -p1
+#%patch218 -p1
+%patch219 -p1
+%patch220 -p1
+%patch221 -p1
+%patch222 -p1
+#%patch223 -p1
+%patch224 -p1
+#%patch225 -p1
+%patch226 -p1
+%patch227 -p1
+%patch228 -p1
+#%patch229 -p1
+%patch230 -p1
+#%patch231 -p1
+%patch232 -p1
+#%patch233 -p1
+%patch234 -p1
+#%patch235 -p1
+%patch236 -p1
+#%patch237 -p1
+%patch238 -p1
+%patch239 -p1
+%patch240 -p1
+#%patch241 -p1
+%patch242 -p1
+%patch243 -p1
+%patch244 -p1
+%patch245 -p1
+%patch246 -p1
+%patch247 -p1
+#%patch248 -p1
+%patch249 -p1
+%patch250 -p1
+%patch251 -p1
+%patch252 -p1
+%patch253 -p1
+%patch254 -p1
+#%patch255 -p1
+%patch256 -p1
+%patch257 -p1
+#%patch258 -p1
+%patch259 -p1
+#%%patch260 -p1
+#%%patch261 -p1
+%patch262 -p1
+%patch263 -p1
+%patch264 -p1
+%patch265 -p1
+%patch266 -p1
+%patch267 -p1
+%patch268 -p1
+%patch269 -p1
+%patch270 -p1
+%patch271 -p1
+%patch272 -p1
+%patch273 -p1
+%patch274 -p1
+%patch275 -p1
+%patch276 -p1
+%patch277 -p1
+%patch278 -p1
+%patch279 -p1
+%patch280 -p1
+#Patch281: 0281-spec-add-libselinux-devel-to-BRs.patch
+%patch282 -p1
+%patch283 -p1
+%patch284 -p1
+%patch285 -p1
+%patch286 -p1
+%patch287 -p1
+%patch288 -p1
+%patch289 -p1
+%patch290 -p1
+%patch291 -p1
+%patch292 -p1
+#Patch293: 0293-spec-add-abrt-consolehelper-applications.patch
+%patch294 -p1
+#Patch295: 0295-spec-add-usermode-and-pam-to-Requires.patch
+%patch296 -p1
+%patch297 -p1
+%patch298 -p1
+%patch299 -p1
+%patch300 -p1
+%patch301 -p1
+%patch302 -p1
+%patch303 -p1
+%patch304 -p1
 
 %build
 rm -f src/plugins/*.1
@@ -577,7 +719,7 @@ libtoolize
 autoconf
 automake --add-missing --force --copy
 #autoreconf
-%configure --with-systemdsystemunitdir=""
+%configure --with-systemdsystemunitdir="" --enable-native-unwinder
 sed -i 's|^hardcode_libdir_flag_spec=.*|hardcode_libdir_flag_spec=""|g' libtool
 sed -i 's|^runpath_var=LD_RUN_PATH|runpath_var=DIE_RPATH_DIE|g' libtool
 CFLAGS="-fno-strict-aliasing"
@@ -800,11 +942,17 @@ gtk-update-icon-cache %{_datadir}/icons/hicolor &>/dev/null || :
 %{_sbindir}/abrtd
 %{_sbindir}/abrt-dbus
 %{_sbindir}/abrt-server
+%{_sbindir}/abrt-auto-reporting
 %{_libexecdir}/abrt-handle-event
+%{_libexecdir}/abrt-action-ureport
+%{_libexecdir}/abrt-action-generate-machine-id
+%{_bindir}/abrt-action-notify
 %{_bindir}/abrt-handle-upload
 %{_bindir}/abrt-action-save-package-data
 %config(noreplace) %{_sysconfdir}/%{name}/abrt.conf
+%{_datadir}/%{name}/conf.d/abrt.conf
 %config(noreplace) %{_sysconfdir}/%{name}/abrt-action-save-package-data.conf
+%{_datadir}/%{name}/conf.d/abrt-action-save-package-data.conf
 %config(noreplace) %{_sysconfdir}/%{name}/gpg_keys
 %config(noreplace) %{_sysconfdir}/libreport/events.d/abrt_event.conf
 %config(noreplace) %{_sysconfdir}/dbus-1/system.d/dbus-abrt.conf
@@ -819,9 +967,14 @@ gtk-update-icon-cache %{_datadir}/icons/hicolor &>/dev/null || :
 
 %dir %{_sysconfdir}/%{name}
 %dir %{_sysconfdir}/%{name}/plugins
+%dir %{_datadir}/%{name}
+%dir %{_datadir}/%{name}/conf.d
+%dir %{_datadir}/%{name}/conf.d/plugins
 %{_mandir}/man1/abrt-handle-upload.1.gz
+%{_mandir}/man1/abrt-action-notify.1.gz
 %{_mandir}/man1/abrt-server.1.gz
 %{_mandir}/man1/abrt-action-save-package-data.1.gz
+%{_mandir}/man1/abrt-auto-reporting.1.gz
 %{_mandir}/man8/abrtd.8.gz
 %{_mandir}/man8/abrt-dbus.8.gz
 %{_mandir}/man5/abrt.conf.5.gz
@@ -829,6 +982,8 @@ gtk-update-icon-cache %{_datadir}/icons/hicolor &>/dev/null || :
 # {_mandir}/man5/pyhook.conf.5.gz
 %{_datadir}/dbus-1/system-services/com.redhat.abrt.service
 %{_libexecdir}/abrt1-to-abrt2
+# filesystem package should own /usr/share/augeas/lenses directory
+%{_datadir}/augeas/lenses/abrt.aug
 
 %files libs
 %defattr(-,root,root,-)
@@ -859,6 +1014,7 @@ gtk-update-icon-cache %{_datadir}/icons/hicolor &>/dev/null || :
 %files addon-ccpp
 %defattr(-,root,root,-)
 %config(noreplace) %{_sysconfdir}/%{name}/plugins/CCpp.conf
+%{_datadir}/%{name}/conf.d/plugins/CCpp.conf
 %dir %attr(0775, abrt, abrt) %{_localstatedir}/cache/abrt-di
 %if %{with systemd}
 /lib/systemd/system/abrt-ccpp.service
@@ -886,6 +1042,7 @@ gtk-update-icon-cache %{_datadir}/icons/hicolor &>/dev/null || :
 %config %{_sysconfdir}/libreport/events/collect_GConf.xml
 %config %{_sysconfdir}/libreport/events/collect_vimrc_user.xml
 %config %{_sysconfdir}/libreport/events/collect_vimrc_system.xml
+%config %{_sysconfdir}/libreport/events/post_report.xml
 %{_mandir}/man*/abrt-action-analyze-c.*
 %{_mandir}/man*/abrt-action-trim-files.*
 %{_mandir}/man*/abrt-action-generate-backtrace.*
@@ -898,6 +1055,7 @@ gtk-update-icon-cache %{_datadir}/icons/hicolor &>/dev/null || :
 %defattr(-,root,root,-)
 %config(noreplace) %{_sysconfdir}/libreport/events.d/koops_event.conf
 %config(noreplace) %{_sysconfdir}/%{name}/plugins/oops.conf
+%{_datadir}/%{name}/conf.d/plugins/oops.conf
 %if %{with systemd}
 /lib/systemd/system/abrt-oops.service
 %else
@@ -905,6 +1063,7 @@ gtk-update-icon-cache %{_datadir}/icons/hicolor &>/dev/null || :
 %endif
 %{_bindir}/abrt-dump-oops
 %{_bindir}/abrt-action-analyze-oops
+%{_bindir}/abrt-action-save-kernel-data
 %{_mandir}/man1/abrt-action-analyze-oops.1*
 %{_mandir}/man5/abrt-oops.conf.5*
 
@@ -926,6 +1085,7 @@ gtk-update-icon-cache %{_datadir}/icons/hicolor &>/dev/null || :
 %files addon-python
 %defattr(-,root,root,-)
 %config(noreplace) %{_sysconfdir}/%{name}/plugins/python.conf
+%{_datadir}/%{name}/conf.d/plugins/python.conf
 %config %{_sysconfdir}/libreport/events.d/python_event.conf
 %{_bindir}/abrt-action-analyze-python
 %{_mandir}/man1/abrt-action-analyze-python.1*
@@ -947,14 +1107,16 @@ gtk-update-icon-cache %{_datadir}/icons/hicolor &>/dev/null || :
 %defattr(-,root,root,-)
 
 %files python
-%{python_sitelib}/problem/
-%{_defaultdocdir}/%{name}-python-%{version}/examples/
+%{python_sitearch}/problem/
+
+%files python-doc
+%{python_sitelib}/problem_examples/
 
 %files console-notification
 %config(noreplace) %{_sysconfdir}/profile.d/abrt-console-notification.sh
 
 %changelog
-* Tue Jul 07 2015 Scientific Linux Auto Patch Process <SCIENTIFIC-LINUX-DEVEL@LISTSERV.FNAL.GOV>
+* Wed Jul 22 2015 Scientific Linux Auto Patch Process <SCIENTIFIC-LINUX-DEVEL@LISTSERV.FNAL.GOV>
 - Added Source: abrt.ini
 -->  Config file for automated patch script
 - Added Patch: abrt-add-sl-gpg-keys.patch
@@ -962,16 +1124,52 @@ gtk-update-icon-cache %{_datadir}/icons/hicolor &>/dev/null || :
 - Ran Regex: (Release: .*)%{\?dist}(.*) => \1.sl6\2
 -->  Modify release string to note changes
 
-* Mon Jun 01 2015 Jakub Filak <jfilak@redhat.com> - 2.0.8-26%{?dist}.1
-- remove old dump directories in upgrade
-- remove outdated rmp scriptlets
-- daemon: allow only root to submit CCpp, Koops, VMCore and Xorg problems
-- abrt-action-install-debuginfo-to-abrt-cache: sanitize arguments and umask
-- make the problem directories owned by abrt and the group root
-- validate uploaded problem directories in abrt-handle-upload
-- don't override nor remove files with user core dump files
-- fix symbolic link and race condition flaws
-- Resolves: #1211966
+* Fri Jun 12 2015 Jakub Filak <jfilak@redhat.com> - 2.0.8-34
+- fix an infinite loop in abrt-hook-ccpp
+- Related: #1199261
+
+* Fri May 22 2015 Jakub Filak <jfilak@redhat.com> - 2.0.8-33
+- ccpp: never remove user core files
+- suid debug info wrapper: do not open build_ids as root
+- abrtd: process only dump directories owned by root
+- Related: #1211967
+
+* Tue May 19 2015 Jakub Filak <jfilak@redhat.com> - 2.0.8-32
+- add usermode and pam used by abrt-(cli|gui) to Requires
+- correct the description of PrivateReports in abrt.conf
+- Related: #1211967
+
+* Fri May 15 2015 Jakub Filak <jfilak@redhat.com> - 2.0.8-31
+- ccpp: do not log to syslog while dumping syslog
+- daemon: harden against race conditions in DELETE
+- upload: validate and sanitize uploaded dump directories
+- a-a-i-d-t-a-cache: sanitize umask and arguments
+- ccpp: avoid overriding system files by coredump
+- make the dump directories owned by root by default
+- ccpp: emulate selinux for creation of compat cores
+- ccpp: do not override existing files by compat cores
+- ccpp: fix symlink race conditions
+- do not read data from root directories
+- ask for root's password in abrt-cli and abrt-gui
+- Resolves: #1199261, #1211967
+
+* Fri Apr 10 2015 Jakub Filak <jfilak@redhat.com> - 2.0.8-30
+- don't try to generate systemd machineid
+- Related: #1150197
+
+* Fri Apr 10 2015 Jakub Filak <jfilak@redhat.com> - 2.0.8-29
+- run sosreport with boot plugin instead of bootloader
+- fix minor bugs 'abrt-cli status' and 'abrt-action-notify'
+- Resolves: #1208154
+- Related: #1150197
+
+* Wed Mar 4 2015 Jakub Filak <jfilak@redhat.com> - 2.0.8-28
+- fix multilib regressions caused by abrt-python
+- Related: #1150197
+
+* Thu Feb 26 2015 Jakub Filak <jfilak@redhat.com> - 2.0.8-27
+- introduce auto-micro-reporting
+- Resolves: #1150197
 
 * Fri Aug 1 2014 Jakub Filak <jfilak@redhat.com> - 2.0.8-26
 - koops: fix a use-after-free bug uncoverd by coverity

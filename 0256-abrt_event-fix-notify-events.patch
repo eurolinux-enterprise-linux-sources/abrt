@@ -1,0 +1,36 @@
+From 52f41844be5832b5586fb5f1c177d75c6d12031f Mon Sep 17 00:00:00 2001
+From: Jakub Filak <jfilak@redhat.com>
+Date: Mon, 2 Mar 2015 14:03:24 +0100
+Subject: [ABRT PATCH] abrt_event: fix notify events
+
+- rename notify_dup to notify-dup
+- remove reporter-mailx from post-create event is this functionality is
+  provided by reporter-mailx itself
+
+Signed-off-by: Jakub Filak <jfilak@redhat.com>
+---
+ src/daemon/abrt_event.conf | 4 +---
+ 1 file changed, 1 insertion(+), 3 deletions(-)
+
+diff --git a/src/daemon/abrt_event.conf b/src/daemon/abrt_event.conf
+index b949bc8..6d56193 100644
+--- a/src/daemon/abrt_event.conf
++++ b/src/daemon/abrt_event.conf
+@@ -64,7 +64,7 @@ EVENT=notify package!=
+     abrt-action-notify -d $DUMP_DIR
+ 
+ 
+-EVENT=notify_dup package!= uid!=
++EVENT=notify-dup package!= uid!=
+     abrt-action-notify -d $DUMP_DIR
+ 
+ 
+@@ -111,5 +111,3 @@ EVENT=post-create
+ # a remote file
+ #EVENT=post-create
+         reporter-upload -u scp://user:password@server.name/tmp/crash.tar.gz || :
+-
+-EVENT=post-create       reporter-mailx --notify-only
+-- 
+1.8.3.1
+

@@ -1,0 +1,117 @@
+From 4525ebbb126ca8f088e9ee115977818991e96736 Mon Sep 17 00:00:00 2001
+From: Jakub Filak <jfilak@redhat.com>
+Date: Tue, 16 Sep 2014 15:35:55 +0200
+Subject: [ABRT PATCH] plugins: add abrt-action-generate-machine-id
+
+Enabled by default on RHEL7.
+
+Resolves: rhbz#1140044
+
+Signed-off-by: Jakub Filak <jfilak@redhat.com>
+---
+ src/daemon/abrt_event.conf                  |  3 ++
+ src/plugins/Makefile.am                     |  2 +
+ src/plugins/abrt-action-generate-machine-id | 57 +++++++++++++++++++++++++++++
+ 3 files changed, 62 insertions(+)
+ create mode 100644 src/plugins/abrt-action-generate-machine-id
+
+diff --git a/src/daemon/abrt_event.conf b/src/daemon/abrt_event.conf
+index 2e1973c..896ce50 100644
+--- a/src/daemon/abrt_event.conf
++++ b/src/daemon/abrt_event.conf
+@@ -94,6 +94,9 @@ EVENT=post-create
+         rm sosreport.log
+         exit 1
+ 
++# Example: if you want to include *machineid* in dump directories:
++EVENT=post-create
++    /usr/libexec/abrt-action-generate-machine-id -o $DUMP_DIR/machineid
+ 
+ # Example:
+ # if you want to upload data immediately at the moment of a crash to
+diff --git a/src/plugins/Makefile.am b/src/plugins/Makefile.am
+index 1dacdb8..8cfded7 100644
+--- a/src/plugins/Makefile.am
++++ b/src/plugins/Makefile.am
+@@ -23,6 +23,7 @@ bin_PROGRAMS = \
+ libexec_PROGRAMS = abrt-action-install-debuginfo-to-abrt-cache
+ 
+ libexec_SCRIPTS = \
++    abrt-action-generate-machine-id \
+     abrt-action-ureport
+ 
+ #dist_pluginsconf_DATA = Python.conf
+@@ -70,6 +71,7 @@ EXTRA_DIST = \
+     abrt-action-analyze-vmcore \
+     https-utils.h \
+     abrt-action-analyze-ccpp-local \
++    abrt-action-generate-machine-id \
+     abrt-action-save-kernel-data \
+     abrt-action-ureport \
+     post_report.xml.in
+diff --git a/src/plugins/abrt-action-generate-machine-id b/src/plugins/abrt-action-generate-machine-id
+new file mode 100644
+index 0000000..0aea787
+--- /dev/null
++++ b/src/plugins/abrt-action-generate-machine-id
+@@ -0,0 +1,57 @@
++#!/usr/bin/python
++from argparse import ArgumentParser
++
++import dmidecode
++import hashlib
++
++
++# Generate a machine_id based off dmidecode fields
++def generate_machine_id():
++    dmixml = dmidecode.dmidecodeXML()
++
++    # Fetch all DMI data into a libxml2.xmlDoc object
++    dmixml.SetResultType(dmidecode.DMIXML_DOC)
++    xmldoc = dmixml.QuerySection('all')
++
++    # Do some XPath queries on the XML document
++    dmixp = xmldoc.xpathNewContext()
++
++    # What to look for - XPath expressions
++    keys = ['/dmidecode/SystemInfo/Manufacturer',
++            '/dmidecode/SystemInfo/ProductName',
++            '/dmidecode/SystemInfo/SerialNumber',
++            '/dmidecode/SystemInfo/SystemUUID']
++
++    # Create a sha256 of ^ for machine_id
++    machine_id = hashlib.sha256()
++
++    # Run xpath expressions
++    for k in keys:
++        data = dmixp.xpathEval(k)
++        for d in data:
++            # Update the hash as we find the fields we are looking for
++            machine_id.update(d.get_content())
++
++    del dmixp
++    del xmldoc
++    # Create sha256 digest
++    return machine_id.hexdigest()
++
++
++if __name__ == "__main__":
++    CMDARGS = ArgumentParser(description = "Generate a machine_id based off dmidecode fields")
++    CMDARGS.add_argument('-o', '--output', type=str, help='Output file')
++
++    OPTIONS = CMDARGS.parse_args()
++    ARGS = vars(OPTIONS)
++
++    machineid =  generate_machine_id()
++
++    if ARGS['output']:
++        try:
++            with open(ARGS['output'], 'w') as outfile:
++                outfile.write(machineid)
++        except IOError as ex:
++            print ex
++    else:
++        print machineid
+-- 
+1.8.3.1
+

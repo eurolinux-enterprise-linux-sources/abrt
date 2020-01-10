@@ -1,0 +1,31 @@
+From 4121452042d2613eca1cd3f8a6b8e8a915ebc573 Mon Sep 17 00:00:00 2001
+From: Jakub Filak <jfilak@redhat.com>
+Date: Wed, 15 Apr 2015 17:42:59 +0200
+Subject: [ABRT PATCH] ccpp: create dump directory without parents
+
+This patch makes the code more robust.
+This patch ensures that abrt-hook-ccpp never creates the dump location.
+
+Related: #1211835
+
+Signed-off-by: Jakub Filak <jfilak@redhat.com>
+---
+ src/hooks/abrt-hook-ccpp.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/hooks/abrt-hook-ccpp.c b/src/hooks/abrt-hook-ccpp.c
+index e2ad833..51656aa 100644
+--- a/src/hooks/abrt-hook-ccpp.c
++++ b/src/hooks/abrt-hook-ccpp.c
+@@ -861,7 +861,7 @@ int main(int argc, char** argv)
+      * the current user, hence, we have to call dd_reset_ownership() after the
+      * directory is populated.
+      */
+-    dd = dd_create_skeleton(path, fsuid, 0640);
++    dd = dd_create_skeleton(path, fsuid, 0640, /*no flags*/0);
+     if (dd)
+     {
+         char *rootdir = get_rootdir(pid);
+-- 
+1.8.3.1
+

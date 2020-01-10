@@ -1,0 +1,39 @@
+From c61502a09653f6eaedca283f538b68c7ebaac0ac Mon Sep 17 00:00:00 2001
+From: Jakub Filak <jfilak@redhat.com>
+Date: Fri, 24 Oct 2014 15:50:02 +0200
+Subject: [ABRT PATCH] a-a-g-machine-id: suppress its failures in
+ abrt_event.conf
+
+If an event script exits with a non-zero code, abrtd deletes entire dump
+directory.
+
+Failures of a-a-g-machine-id must not lead to the deletion of a dump
+directory.
+
+It is also expected that dmidecode-less systems will print an error
+message related to the fact that dmidecode doesn't work, hence
+forwarding of STDOUT and STDERR to 'event_log' file.
+
+Related to rhbz#1139552
+
+Signed-off-by: Jakub Filak <jfilak@redhat.com>
+---
+ src/daemon/abrt_event.conf | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/daemon/abrt_event.conf b/src/daemon/abrt_event.conf
+index 896ce50..b949bc8 100644
+--- a/src/daemon/abrt_event.conf
++++ b/src/daemon/abrt_event.conf
+@@ -96,7 +96,7 @@ EVENT=post-create
+ 
+ # Example: if you want to include *machineid* in dump directories:
+ EVENT=post-create
+-    /usr/libexec/abrt-action-generate-machine-id -o $DUMP_DIR/machineid
++    /usr/libexec/abrt-action-generate-machine-id -o $DUMP_DIR/machineid >>event_log 2>&1 || :
+ 
+ # Example:
+ # if you want to upload data immediately at the moment of a crash to
+-- 
+1.8.3.1
+

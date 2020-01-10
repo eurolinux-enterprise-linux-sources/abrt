@@ -1,0 +1,188 @@
+From 0943d147dfb70a244f31de2924c9108f1d2a281c Mon Sep 17 00:00:00 2001
+From: Jakub Filak <jfilak@redhat.com>
+Date: Fri, 22 May 2015 12:38:24 +0200
+Subject: [ABRT PATCH] cli: correct passing arguments to child process
+
+Fix the adapation to PrivateReports. The restart_as_root_if_needed()
+was ignoring positional DIR parameters after the named arguments.
+
+Signed-off-by: Jakub Filak <jfilak@redhat.com>
+---
+ src/cli/abrt-cli-core.c |  9 ++-------
+ src/cli/abrt-cli-core.h |  2 +-
+ src/cli/list.c          | 49 +++++++------------------------------------------
+ src/cli/report.c        |  7 ++++---
+ src/cli/rm.c            |  7 ++++---
+ 5 files changed, 18 insertions(+), 56 deletions(-)
+
+diff --git a/src/cli/abrt-cli-core.c b/src/cli/abrt-cli-core.c
+index ac72bfd..536ef63 100644
+--- a/src/cli/abrt-cli-core.c
++++ b/src/cli/abrt-cli-core.c
+@@ -80,7 +80,7 @@ vector_of_problem_data_t *fetch_crash_infos(GList *dir_list)
+     return vpd;
+ }
+ 
+-void restart_as_root_if_needed(const char *cmd, unsigned cmd_argc, const char *cmd_argv[])
++void restart_as_root_if_needed(unsigned cmd_argc, const char *cmd_argv[])
+ {
+     if (g_settings_privatereports && getuid() == 0)
+         return;
+@@ -90,18 +90,13 @@ void restart_as_root_if_needed(const char *cmd, unsigned cmd_argc, const char *c
+     if (!ask_yes_no(_("Do you wan to run abrt-cli-root?")))
+         return;
+ 
+-    const char *verbs[] = { "", "-v", "-vv", "-vvv" };
+     int i = 0;
+-    char **new_args = xmalloc((cmd_argc + 4)*sizeof(char *));
++    char **new_args = xmalloc((cmd_argc + 2)*sizeof(char *));
+     new_args[i++] = (char *)"abrt-cli-root";
+-    new_args[i++] = (char *)cmd;
+ 
+     for (unsigned j = 0; j < cmd_argc; )
+         new_args[i++] = (char *)cmd_argv[j++];
+ 
+-    if (g_verbose)
+-        new_args[i++] = (char *)verbs[g_verbose <= 3 ? g_verbose : 3];
+-
+     new_args[i++] = (char *)NULL;
+ 
+     execv(BIN_DIR"/abrt-cli-root", (char *const *)new_args);
+diff --git a/src/cli/abrt-cli-core.h b/src/cli/abrt-cli-core.h
+index 2bab671..9dc08f1 100644
+--- a/src/cli/abrt-cli-core.h
++++ b/src/cli/abrt-cli-core.h
+@@ -31,6 +31,6 @@ vector_of_problem_data_t *new_vector_of_problem_data(void);
+ problem_data_t *fill_crash_info(const char *dump_dir_name);
+ vector_of_problem_data_t *fetch_crash_infos(GList *dir_list);
+ 
+-void restart_as_root_if_needed(const char *cmd, unsigned cmd_argc, const char *cmd_argv[]);
++void restart_as_root_if_needed(unsigned cmd_argc, const char *cmd_argv[]);
+ 
+ #endif /* ABRT_CLI_CORE_H_ */
+diff --git a/src/cli/list.c b/src/cli/list.c
+index e0de809..3a1f3fb 100644
+--- a/src/cli/list.c
++++ b/src/cli/list.c
+@@ -129,14 +129,6 @@ int cmd_list(int argc, const char **argv)
+         "& list [options] [DIR]..."
+         );
+ 
+-    enum {
+-        OPT_v = 1 << 0,
+-        OPT_n = 1 << 1,
+-        OPT_d = 1 << 2,
+-        OPT_s = 1 << 3,
+-        OPT_u = 1 << 4,
+-    };
+-
+     int opt_not_reported = 0;
+     int opt_detailed = 0;
+     int opt_since = 0;
+@@ -152,31 +144,10 @@ int cmd_list(int argc, const char **argv)
+         OPT_END()
+     };
+ 
+-    int opts = parse_opts(argc, (char **)argv, program_options, program_usage_string);
+-
+-    {
+-        int c = 0;
+-        const char *cmd_args[6];
+-        if (opt_not_reported)
+-            cmd_args[c++] = "-n";
+-        if (opt_detailed)
+-            cmd_args[c++] = "-d";
+-        if ((opts & OPT_s))
+-        {
+-            cmd_args[c++] = "-s";
+-            /* leak */
+-            cmd_args[c++] = xasprintf("%d", opt_since);
+-        }
+-        if ((opts & OPT_u))
+-        {
+-            cmd_args[c++] = "-u";
+-            /* leak */
+-            cmd_args[c++] = xasprintf("%d", opt_until);
+-        }
++    parse_opts(argc, (char **)argv, program_options, program_usage_string);
+ 
+-        load_abrt_conf();
+-        restart_as_root_if_needed("list", c, cmd_args);
+-    }
++    load_abrt_conf();
++    restart_as_root_if_needed(argc, argv);
+ 
+     argv += optind;
+ 
+@@ -224,20 +195,14 @@ int cmd_info(int argc, const char **argv)
+     };
+ 
+     parse_opts(argc, (char **)argv, program_options, program_usage_string);
+-    argv += optind;
+ 
+-    if (!argv[0])
++    if (!argv[optind])
+         show_usage_and_die(program_usage_string, program_options);
+ 
+-    {
+-        unsigned c = 0;
+-        const char *cmd_args[1];
+-        if (opt_detailed)
+-            cmd_args[c++] = "-d";
++    load_abrt_conf();
++    restart_as_root_if_needed(argc, argv);
+ 
+-        load_abrt_conf();
+-        restart_as_root_if_needed("info", c, cmd_args);
+-    }
++    argv += optind;
+ 
+     int errs = 0;
+     while (*argv)
+diff --git a/src/cli/report.c b/src/cli/report.c
+index fd1d1e1..c1843f2 100644
+--- a/src/cli/report.c
++++ b/src/cli/report.c
+@@ -34,13 +34,14 @@ int cmd_report(int argc, const char **argv)
+     };
+ 
+     parse_opts(argc, (char **)argv, program_options, program_usage_string);
+-    argv += optind;
+ 
+-    if (!argv[0])
++    if (!argv[optind])
+         show_usage_and_die(program_usage_string, program_options);
+ 
+     load_abrt_conf();
+-    restart_as_root_if_needed("report", /*no args*/0, /*no args*/NULL);
++    restart_as_root_if_needed(argc, argv);
++
++    argv += optind;
+ 
+     char *home = getenv("HOME");
+     GList *D_list = NULL;
+diff --git a/src/cli/rm.c b/src/cli/rm.c
+index 9c7e6e7..80e7983 100644
+--- a/src/cli/rm.c
++++ b/src/cli/rm.c
+@@ -38,13 +38,14 @@ int cmd_rm(int argc, const char **argv)
+     };
+ 
+     parse_opts(argc, (char **)argv, program_options, program_usage_string);
+-    argv += optind;
+ 
+-    if (!argv[0])
++    if (!argv[optind])
+         show_usage_and_die(program_usage_string, program_options);
+ 
+     load_abrt_conf();
+-    restart_as_root_if_needed("rm", /*no args*/0, /*no args*/NULL);
++    restart_as_root_if_needed(argc, argv);
++
++    argv += optind;
+ 
+     int errs = 0;
+     while (*argv)
+-- 
+1.8.3.1
+

@@ -1,0 +1,236 @@
+From a8b399ddc2815443aec67098f89ca7e99b8e1cb4 Mon Sep 17 00:00:00 2001
+From: Jakub Filak <jfilak@redhat.com>
+Date: Fri, 9 May 2014 09:30:25 +0200
+Subject: [ABRT PATCH] abrt-cli list: implement --since and --until
+
+Version 2: make --until without --since work.
+
+Signed-off-by: Denys Vlasenko <dvlasenk@redhat.com>
+Signed-off-by: Michal Toman <mtoman@redhat.com>
+
+Conflicts:
+
+	src/cli/list.c
+---
+ src/cli/abrt-cli-core.c   | 49 ++++++++++++++++-------------------------------
+ src/cli/abrt-cli-core.h   |  2 ++
+ src/cli/list.c            | 39 ++++++++++++++++++++-----------------
+ src/cli/report.c          |  2 +-
+ src/include/problem_api.h |  5 +++++
+ src/lib/problem_api.c     |  2 +-
+ 6 files changed, 47 insertions(+), 52 deletions(-)
+
+diff --git a/src/cli/abrt-cli-core.c b/src/cli/abrt-cli-core.c
+index 7533fda..3000917 100644
+--- a/src/cli/abrt-cli-core.c
++++ b/src/cli/abrt-cli-core.c
+@@ -57,39 +57,24 @@ problem_data_t *fill_crash_info(const char *dump_dir_name)
+     return problem_data;
+ }
+ 
++static int
++append_problem_data(struct dump_dir *dd, void *arg)
++{
++    vector_of_problem_data_t *vpd = arg;
++
++    problem_data_t *problem_data = create_problem_data_from_dump_dir(dd);
++    add_to_problem_data_ext(problem_data, CD_DUMPDIR, dd->dd_dirname,
++                            CD_FLAG_TXT + CD_FLAG_ISNOTEDITABLE + CD_FLAG_LIST);
++    g_ptr_array_add(vpd, problem_data);
++    return 0;
++}
++
+ vector_of_problem_data_t *fetch_crash_infos(GList *dir_list)
+ {
+-    vector_of_problem_data_t *ci = new_vector_of_problem_data();
++    vector_of_problem_data_t *vpd = new_vector_of_problem_data();
++
+     for (GList *li = dir_list; li; li = li->next)
+-    {
+-        char *dir_name = (char *)li->data;
+-        VERB1 log("Loading dumps from '%s'", dir_name);
+-
+-        DIR *dir = opendir(dir_name);
+-        if (dir != NULL)
+-        {
+-            struct dirent *dent;
+-            while ((dent = readdir(dir)) != NULL)
+-            {
+-                if (dot_or_dotdot(dent->d_name))
+-                    continue; /* skip "." and ".." */
+-
+-                char *dump_dir_name = concat_path_file(dir_name, dent->d_name);
+-
+-                struct stat statbuf;
+-                if (stat(dump_dir_name, &statbuf) == 0
+-                    && S_ISDIR(statbuf.st_mode))
+-                {
+-                    problem_data_t *problem_data = fill_crash_info(dump_dir_name);
+-                    if (problem_data)
+-                        g_ptr_array_add(ci, problem_data);
+-                }
+-                free(dump_dir_name);
+-            }
+-            closedir(dir);
+-        }
+-    }
+-
+-    return ci;
+-}
++        for_each_problem_in_dir(li->data, getuid(), append_problem_data, vpd);
+ 
++    return vpd;
++}
+diff --git a/src/cli/abrt-cli-core.h b/src/cli/abrt-cli-core.h
+index 55a307b..b0f6186 100644
+--- a/src/cli/abrt-cli-core.h
++++ b/src/cli/abrt-cli-core.h
+@@ -20,6 +20,8 @@
+ #ifndef ABRT_CLI_CORE_H_
+ #define ABRT_CLI_CORE_H_
+ 
++#include "problem_api.h"
++
+ typedef GPtrArray vector_of_problem_data_t;
+ 
+ problem_data_t *get_problem_data(vector_of_problem_data_t *vector, unsigned i);
+diff --git a/src/cli/list.c b/src/cli/list.c
+index 0ba64c1..565b1f4 100644
+--- a/src/cli/list.c
++++ b/src/cli/list.c
+@@ -23,8 +23,6 @@
+ #include "builtin-cmd.h"
+ 
+ /* TODO: npajkovs
+- *     add --since
+- *     add --until
+  *     add --pretty=oneline|raw|normal|format="%a %b %c"
+  *     add  wildcard e.g. *-2011-04-01-10-* (list all problems in specific day)
+  *
+@@ -63,8 +61,7 @@ static void print_crash(problem_data_t *problem_data, int detailed)
+  * @param include_reported
+  *   Do not skip entries marked as already reported.
+  */
+-static void print_crash_list(vector_of_problem_data_t *crash_list, int include_reported,
+-                             int detailed)
++static void print_crash_list(vector_of_problem_data_t *crash_list, int detailed, int include_reported, long since, long until)
+ {
+     unsigned i;
+     for (i = 0; i < crash_list->len; ++i)
+@@ -72,8 +69,16 @@ static void print_crash_list(vector_of_problem_data_t *crash_list, int include_r
+         problem_data_t *crash = get_problem_data(crash_list, i);
+         if (!include_reported)
+         {
+-            const char *msg = get_problem_item_content_or_NULL(crash, FILENAME_REPORTED_TO);
+-            if (msg)
++            if (!get_problem_item_content_or_NULL(crash, FILENAME_REPORTED_TO))
++                continue;
++        }
++        if (since || until)
++        {
++            const char *s = get_problem_item_content_or_NULL(crash, FILENAME_LAST_OCCURRENCE);
++            long val = s ? atol(s) : 0;
++            if (since && val < since)
++                continue;
++            if (until && val > until)
+                 continue;
+         }
+ 
+@@ -90,13 +95,18 @@ int cmd_list(int argc, const char **argv)
+         "& list [options] [DIR]..."
+         );
+ 
+-    static int opt_full, opt_detailed;
++    int opt_full = 0;
++    int opt_detailed = 0;
++    int opt_since = 0;
++    int opt_until = 0;
+     struct options program_options[] = {
+         OPT__VERBOSE(&g_verbose),
+         OPT_GROUP(""),
+         OPT_BOOL('f', "full"     , &opt_full,      _("List even reported problems")),
+         /* deprecate -d option with --pretty=full*/
+         OPT_BOOL('d', "detailed" , &opt_detailed,  _("Show detailed report")),
++        OPT_INTEGER('s', "since" , &opt_since,  _("List only the problems more recent than specified timestamp")),
++        OPT_INTEGER('u', "until" , &opt_until,  _("List only the problems older than specified timestamp")),
+         OPT_END()
+     };
+ 
+@@ -107,20 +117,13 @@ int cmd_list(int argc, const char **argv)
+     while (*argv)
+         D_list = g_list_append(D_list, xstrdup(*argv++));
+     if (!D_list)
+-    {
+-        load_abrt_conf();
+-        char *home = getenv("HOME");
+-        if (home)
+-            D_list = g_list_append(D_list, concat_path_file(home, ".abrt/spool"));
+-        D_list = g_list_append(D_list, xstrdup(g_settings_dump_location));
+-        free_abrt_conf_data();
+-    }
++        D_list = get_problem_storages();
+ 
+     vector_of_problem_data_t *ci = fetch_crash_infos(D_list);
+ 
+-    g_ptr_array_sort_with_data(ci, &cmp_problem_data, (char *) FILENAME_TIME);
++    g_ptr_array_sort_with_data(ci, &cmp_problem_data, (char *) FILENAME_LAST_OCCURRENCE);
+ 
+-    print_crash_list(ci, opt_full, opt_detailed);
++    print_crash_list(ci, opt_detailed, opt_full, opt_since, opt_until);
+     free_vector_of_problem_data(ci);
+     list_free_with_free(D_list);
+ 
+@@ -133,7 +136,7 @@ int cmd_info(int argc, const char **argv)
+         "& info [options] DIR..."
+         );
+ 
+-    static int opt_detailed;
++    int opt_detailed = 0;
+     struct options program_options[] = {
+         OPT__VERBOSE(&g_verbose),
+         OPT_GROUP(""),
+diff --git a/src/cli/report.c b/src/cli/report.c
+index e20bb96..8d40ace 100644
+--- a/src/cli/report.c
++++ b/src/cli/report.c
+@@ -61,7 +61,7 @@ int cmd_report(int argc, const char **argv)
+             if (at >= ci->len)
+                 error_msg_and_die("error: number is out of range '%s'", dir_name);
+ 
+-            g_ptr_array_sort_with_data(ci, &cmp_problem_data, (char *) FILENAME_TIME);
++            g_ptr_array_sort_with_data(ci, &cmp_problem_data, (char *) FILENAME_LAST_OCCURRENCE);
+             problem_data_t *pd = get_problem_data(ci, at);
+ 
+             dir_name = get_problem_item_content_or_NULL(pd, CD_DUMPDIR);
+diff --git a/src/include/problem_api.h b/src/include/problem_api.h
+index b5a952f..803ec32 100644
+--- a/src/include/problem_api.h
++++ b/src/include/problem_api.h
+@@ -20,6 +20,11 @@
+ #include <glib.h>
+ #include <libabrt.h>
+ 
++int for_each_problem_in_dir(const char *path,
++                        uid_t caller_uid,
++                        int (*callback)(struct dump_dir *dd, void *arg),
++                        void *arg);
++
+ /* Retrieves the list of directories currently used as a problem storage
+  * The result must be freed by caller
+  * @returns List of strings representing the full path to dirs
+diff --git a/src/lib/problem_api.c b/src/lib/problem_api.c
+index eebac34..894b725 100644
+--- a/src/lib/problem_api.c
++++ b/src/lib/problem_api.c
+@@ -25,7 +25,7 @@
+  * Goes through all problems and for problems accessible by caller_uid
+  * calls callback. If callback returns non-0, returns that value.
+  */
+-static int for_each_problem_in_dir(const char *path,
++int for_each_problem_in_dir(const char *path,
+                         uid_t caller_uid,
+                         int (*callback)(struct dump_dir *dd, void *arg),
+                         void *arg)
+-- 
+1.8.3.1
+

@@ -1,0 +1,31 @@
+From 25de6ebe533d03f0a611dd7adc6dc81539d46db3 Mon Sep 17 00:00:00 2001
+From: Jakub Filak <jfilak@redhat.com>
+Date: Fri, 22 May 2015 06:48:52 +0200
+Subject: [ABRT PATCH] abrtd: do not log new client connected
+
+Every connection to abrtd was logged which is a bit noisy with the switch to
+the "root:abrt" template.
+
+Related: #1212868
+
+Signed-off-by: Jakub Filak <jfilak@redhat.com>
+---
+ src/daemon/abrtd.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/daemon/abrtd.c b/src/daemon/abrtd.c
+index bb007ea..13d77ab 100644
+--- a/src/daemon/abrtd.c
++++ b/src/daemon/abrtd.c
+@@ -241,7 +241,7 @@ static gboolean server_socket_cb(GIOChannel *source, GIOCondition condition, gpo
+         return TRUE;
+     }
+ 
+-    log("New client connected");
++    VERB1 log("New client connected");
+     pid_t pid = fork();
+     if (pid < 0)
+     {
+-- 
+1.8.3.1
+

@@ -1,0 +1,268 @@
+From 9c355b70e45bcf08a97ef845a1d99435a9966cba Mon Sep 17 00:00:00 2001
+From: Jakub Filak <jfilak@redhat.com>
+Date: Thu, 14 May 2015 07:34:36 +0200
+Subject: [ABRT PATCH] cli: adapt to PrivateReports
+
+Restart the process as root if PrivateReports is enabled.
+
+We want to run abrt-cli with root privileges if PrivateReports=yes by default,
+because we think that this is the most comfortable work-flow for our users and
+we are not sure know how to inform users about the need to run abrt-cli with
+root privileges in a different way.
+
+We want to fall back to user privileges, because if a user wants to report a
+problem in RHEL-6, ABRT moves the corresponding dump directory to the user's
+home, so the directory becomes inaccessible for root in some cases.
+
+Signed-off-by: Jakub Filak <jfilak@redhat.com>
+
+Conflicts:
+	src/cli/abrt-cli-core.c
+---
+ po/POTFILES.in                |  1 +
+ src/cli/Makefile.am           | 11 +++++++++++
+ src/cli/abrt-cli-core.c       | 30 +++++++++++++++++++++++++++++
+ src/cli/abrt-cli-core.h       |  2 ++
+ src/cli/abrt-cli-root.console |  2 ++
+ src/cli/abrt-cli-root.pam     |  4 ++++
+ src/cli/list.c                | 45 ++++++++++++++++++++++++++++++++++++++++++-
+ src/cli/report.c              |  2 ++
+ src/cli/rm.c                  |  4 ++++
+ src/cli/status.c              |  2 ++
+ 10 files changed, 102 insertions(+), 1 deletion(-)
+ create mode 100644 src/cli/abrt-cli-root.console
+ create mode 100644 src/cli/abrt-cli-root.pam
+
+diff --git a/po/POTFILES.in b/po/POTFILES.in
+index 6194d43..3e17507 100644
+--- a/po/POTFILES.in
++++ b/po/POTFILES.in
+@@ -31,6 +31,7 @@ src/plugins/collect_xsession_errors.xml.in
+ src/plugins/https-utils.c
+ 
+ src/cli/abrt-cli.c
++src/cli/abrt-cli-core.c
+ src/cli/list.c
+ src/cli/status.c
+ src/plugins/analyze_VMcore.xml.in
+diff --git a/src/cli/Makefile.am b/src/cli/Makefile.am
+index 3e4c976..86df86a 100644
+--- a/src/cli/Makefile.am
++++ b/src/cli/Makefile.am
+@@ -15,6 +15,7 @@ abrt_cli_SOURCES = $(CLI_C) $(BUILTIN_C) builtin-cmd.h abrt-cli-core.h
+ abrt_cli_CFLAGS = \
+ 	-I$(srcdir)/../include \
+ 	-I$(srcdir)/../lib \
++	-DBIN_DIR=\"$(bindir)\" \
+ 	$(LIBREPORT_CFLAGS) \
+ 	-Wwrite-strings -Werror
+ 
+@@ -27,3 +28,13 @@ dist_profileconfig_DATA = \
+     abrt-console-notification.sh
+ 
+ DEFS = -DLOCALEDIR=\"$(localedir)\" @DEFS@
++
++install-exec-hook:
++	ln -sf $(bindir)/consolehelper $(DESTDIR)$(bindir)/abrt-cli-root
++
++install-data-hook:
++	$(MKDIR_P) $(DESTDIR)$(sysconfdir)/pam.d $(DESTDIR)$(sysconfdir)/security/console.apps
++	$(INSTALL_DATA) abrt-cli-root.pam $(DESTDIR)$(sysconfdir)/pam.d/abrt-cli-root
++	$(INSTALL_DATA) abrt-cli-root.console $(DESTDIR)$(sysconfdir)/security/console.apps/abrt-cli-root
++
++EXTRA_DIST = abrt-cli-root.console abrt-cli-root.pam
+diff --git a/src/cli/abrt-cli-core.c b/src/cli/abrt-cli-core.c
+index 3000917..ac72bfd 100644
+--- a/src/cli/abrt-cli-core.c
++++ b/src/cli/abrt-cli-core.c
+@@ -19,6 +19,7 @@
+ 
+ #include "libabrt.h"
+ #include "abrt-cli-core.h"
++#include <client.h>
+ 
+ /* Vector of problems: */
+ /* problem_data_vector[i] = { "name" = { "content", CD_FLAG_foo_bits } } */
+@@ -78,3 +79,32 @@ vector_of_problem_data_t *fetch_crash_infos(GList *dir_list)
+ 
+     return vpd;
+ }
++
++void restart_as_root_if_needed(const char *cmd, unsigned cmd_argc, const char *cmd_argv[])
++{
++    if (g_settings_privatereports && getuid() == 0)
++        return;
++
++    log(_("PrivateReports is enabled. Only \"root\" can see the problems detected by ABRT."));
++
++    if (!ask_yes_no(_("Do you wan to run abrt-cli-root?")))
++        return;
++
++    const char *verbs[] = { "", "-v", "-vv", "-vvv" };
++    int i = 0;
++    char **new_args = xmalloc((cmd_argc + 4)*sizeof(char *));
++    new_args[i++] = (char *)"abrt-cli-root";
++    new_args[i++] = (char *)cmd;
++
++    for (unsigned j = 0; j < cmd_argc; )
++        new_args[i++] = (char *)cmd_argv[j++];
++
++    if (g_verbose)
++        new_args[i++] = (char *)verbs[g_verbose <= 3 ? g_verbose : 3];
++
++    new_args[i++] = (char *)NULL;
++
++    execv(BIN_DIR"/abrt-cli-root", (char *const *)new_args);
++    perror_msg(_("Could not execute abrt-gui-root via consolehelper"));
++    exit(-1);
++}
+diff --git a/src/cli/abrt-cli-core.h b/src/cli/abrt-cli-core.h
+index b0f6186..2bab671 100644
+--- a/src/cli/abrt-cli-core.h
++++ b/src/cli/abrt-cli-core.h
+@@ -31,4 +31,6 @@ vector_of_problem_data_t *new_vector_of_problem_data(void);
+ problem_data_t *fill_crash_info(const char *dump_dir_name);
+ vector_of_problem_data_t *fetch_crash_infos(GList *dir_list);
+ 
++void restart_as_root_if_needed(const char *cmd, unsigned cmd_argc, const char *cmd_argv[]);
++
+ #endif /* ABRT_CLI_CORE_H_ */
+diff --git a/src/cli/abrt-cli-root.console b/src/cli/abrt-cli-root.console
+new file mode 100644
+index 0000000..bba66e3
+--- /dev/null
++++ b/src/cli/abrt-cli-root.console
+@@ -0,0 +1,2 @@
++USER=root
++PROGRAM=/usr/bin/abrt-cli
+diff --git a/src/cli/abrt-cli-root.pam b/src/cli/abrt-cli-root.pam
+new file mode 100644
+index 0000000..1952d97
+--- /dev/null
++++ b/src/cli/abrt-cli-root.pam
+@@ -0,0 +1,4 @@
++#%PAM-1.0
++auth            include         config-util
++account         include         config-util
++session         include         config-util
+diff --git a/src/cli/list.c b/src/cli/list.c
+index cf4c7c9..e0de809 100644
+--- a/src/cli/list.c
++++ b/src/cli/list.c
+@@ -129,6 +129,14 @@ int cmd_list(int argc, const char **argv)
+         "& list [options] [DIR]..."
+         );
+ 
++    enum {
++        OPT_v = 1 << 0,
++        OPT_n = 1 << 1,
++        OPT_d = 1 << 2,
++        OPT_s = 1 << 3,
++        OPT_u = 1 << 4,
++    };
++
+     int opt_not_reported = 0;
+     int opt_detailed = 0;
+     int opt_since = 0;
+@@ -144,7 +152,32 @@ int cmd_list(int argc, const char **argv)
+         OPT_END()
+     };
+ 
+-    parse_opts(argc, (char **)argv, program_options, program_usage_string);
++    int opts = parse_opts(argc, (char **)argv, program_options, program_usage_string);
++
++    {
++        int c = 0;
++        const char *cmd_args[6];
++        if (opt_not_reported)
++            cmd_args[c++] = "-n";
++        if (opt_detailed)
++            cmd_args[c++] = "-d";
++        if ((opts & OPT_s))
++        {
++            cmd_args[c++] = "-s";
++            /* leak */
++            cmd_args[c++] = xasprintf("%d", opt_since);
++        }
++        if ((opts & OPT_u))
++        {
++            cmd_args[c++] = "-u";
++            /* leak */
++            cmd_args[c++] = xasprintf("%d", opt_until);
++        }
++
++        load_abrt_conf();
++        restart_as_root_if_needed("list", c, cmd_args);
++    }
++
+     argv += optind;
+ 
+     GList *D_list = NULL;
+@@ -196,6 +229,16 @@ int cmd_info(int argc, const char **argv)
+     if (!argv[0])
+         show_usage_and_die(program_usage_string, program_options);
+ 
++    {
++        unsigned c = 0;
++        const char *cmd_args[1];
++        if (opt_detailed)
++            cmd_args[c++] = "-d";
++
++        load_abrt_conf();
++        restart_as_root_if_needed("info", c, cmd_args);
++    }
++
+     int errs = 0;
+     while (*argv)
+     {
+diff --git a/src/cli/report.c b/src/cli/report.c
+index 8d40ace..fd1d1e1 100644
+--- a/src/cli/report.c
++++ b/src/cli/report.c
+@@ -40,6 +40,8 @@ int cmd_report(int argc, const char **argv)
+         show_usage_and_die(program_usage_string, program_options);
+ 
+     load_abrt_conf();
++    restart_as_root_if_needed("report", /*no args*/0, /*no args*/NULL);
++
+     char *home = getenv("HOME");
+     GList *D_list = NULL;
+     if (home)
+diff --git a/src/cli/rm.c b/src/cli/rm.c
+index 8f185a4..9c7e6e7 100644
+--- a/src/cli/rm.c
++++ b/src/cli/rm.c
+@@ -19,6 +19,7 @@
+ 
+ #include "libabrt.h"
+ #include "builtin-cmd.h"
++#include "abrt-cli-core.h"
+ 
+ /* TODO npajkovs:
+  *   add -n, --dry-run
+@@ -42,6 +43,9 @@ int cmd_rm(int argc, const char **argv)
+     if (!argv[0])
+         show_usage_and_die(program_usage_string, program_options);
+ 
++    load_abrt_conf();
++    restart_as_root_if_needed("rm", /*no args*/0, /*no args*/NULL);
++
+     int errs = 0;
+     while (*argv)
+     {
+diff --git a/src/cli/status.c b/src/cli/status.c
+index ad2bf56..fbb591c 100644
+--- a/src/cli/status.c
++++ b/src/cli/status.c
+@@ -42,6 +42,8 @@ int cmd_status(int argc, const char **argv)
+     parse_opts(argc, (char **)argv, program_options, program_usage_string);
+     argv += optind;
+ 
++    /* Don't use restart_as_root_if_needed() -> this command is called from an etc/profile.d script */
++
+     GList *problem_dir_list = NULL;
+     while (*argv)
+         problem_dir_list = g_list_append(problem_dir_list, xstrdup(*argv++));
+-- 
+1.8.3.1
+

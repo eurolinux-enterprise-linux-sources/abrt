@@ -1,0 +1,53 @@
+From fbe1c1fbfdbbd79209359c0c71438b1c4c1efa44 Mon Sep 17 00:00:00 2001
+From: Jakub Filak <jfilak@redhat.com>
+Date: Wed, 15 Apr 2015 15:27:09 +0200
+Subject: [ABRT PATCH] ccpp: postpone changing ownership of new dump
+ directories
+
+Florian Weimer <fweimer@redhat.com>:
+
+    Currently, dd_create changes ownership of the directory immediately,
+    when it is still empty. This means that any operations within the
+    directory (which happen as the root user) can race with changes to
+    the directory contents by the user. If you delay changing directory
+    ownership until all the files have created and written, this is no
+    longer a problem.
+
+Related: #1211835
+
+Signed-off-by: Jakub Filak <jfilak@redhat.com>
+---
+ src/hooks/abrt-hook-ccpp.c | 9 ++++++++-
+ 1 file changed, 8 insertions(+), 1 deletion(-)
+
+diff --git a/src/hooks/abrt-hook-ccpp.c b/src/hooks/abrt-hook-ccpp.c
+index f0754fe..e2ad833 100644
+--- a/src/hooks/abrt-hook-ccpp.c
++++ b/src/hooks/abrt-hook-ccpp.c
+@@ -856,8 +856,12 @@ int main(int argc, char** argv)
+ 
+     /* use fsuid instead of uid, so we don't expose any sensitive
+      * information of suided app in /var/spool/abrt
++     *
++     * dd_create_skeleton() creates a new directory and leaves ownership to
++     * the current user, hence, we have to call dd_reset_ownership() after the
++     * directory is populated.
+      */
+-    dd = dd_create(path, fsuid, 0640);
++    dd = dd_create_skeleton(path, fsuid, 0640);
+     if (dd)
+     {
+         char *rootdir = get_rootdir(pid);
+@@ -995,6 +999,9 @@ int main(int argc, char** argv)
+         }
+ #endif
+ 
++        /* And finally set the right uid and gid */
++        dd_reset_ownership(dd);
++
+         /* We close dumpdir before we start catering for crash storm case.
+          * Otherwise, delete_dump_dir's from other concurrent
+          * CCpp's won't be able to delete our dump (their delete_dump_dir
+-- 
+1.8.3.1
+

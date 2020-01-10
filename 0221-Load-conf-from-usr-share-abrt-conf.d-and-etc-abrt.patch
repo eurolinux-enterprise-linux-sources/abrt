@@ -1,0 +1,404 @@
+From f4d5fe968bb96900ce0dfab1debd82f97173aa50 Mon Sep 17 00:00:00 2001
+From: Jakub Filak <jfilak@redhat.com>
+Date: Wed, 7 May 2014 16:14:48 +0200
+Subject: [ABRT PATCH] Load conf from /usr/share/abrt/conf.d and /etc/abrt
+
+Related to #752
+
+Signed-off-by: Jakub Filak <jfilak@redhat.com>
+
+Conflicts:
+
+	configure.ac
+	src/daemon/Makefile.am
+	src/daemon/abrt-action-save-package-data.c
+	src/hooks/abrt_harvest_vmcore.py.in
+	src/plugins/Makefile.am
+	src/plugins/abrt-action-analyze-xorg.c
+	src/python-problem/problem/common.h
+	src/python-problem/problem/pyabrt.c
+	src/python-problem/problem/pyabrtmodule.c
+---
+ configure.ac                                 |  4 ++
+ doc/Makefile.am                              |  1 +
+ doc/abrt-auto-reporting.txt                  | 71 ++++++++++++++++++++++++++++
+ src/daemon/Makefile.am                       |  3 ++
+ src/daemon/abrt-action-save-package-data.c   | 17 +++++--
+ src/hooks/Makefile.am                        |  3 ++
+ src/hooks/abrt-hook-ccpp.c                   |  2 +-
+ src/hooks/abrt_exception_handler.py.in       | 18 ++-----
+ src/include/libabrt.h                        |  6 +++
+ src/lib/Makefile.am                          |  3 ++
+ src/lib/abrt_conf.c                          | 22 +++++++--
+ src/plugins/abrt-action-generate-backtrace.c |  5 +-
+ src/plugins/abrt-action-install-debuginfo.in | 20 +++-----
+ 13 files changed, 137 insertions(+), 38 deletions(-)
+ create mode 100644 doc/abrt-auto-reporting.txt
+
+diff --git a/configure.ac b/configure.ac
+index e3cdb72..d267f65 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -97,9 +97,11 @@ AC_CHECK_HEADER([sys/inotify.h], [],
+ AC_CHECK_HEADERS([locale.h])
+ 
+ CONF_DIR='${sysconfdir}/${PACKAGE_NAME}'
++DEFAULT_CONF_DIR='${datadir}/${PACKAGE_NAME}/conf.d'
+ VAR_RUN='${localstatedir}/run'
+ PLUGINS_CONF_DIR='${sysconfdir}/${PACKAGE_NAME}/plugins'
+ EVENTS_DIR='${sysconfdir}/libreport/events'
++DEFAULT_PLUGINS_CONF_DIR='${datadir}/${PACKAGE_NAME}/conf.d/plugins'
+ EVENTS_CONF_DIR='${sysconfdir}/libreport/events.d'
+ ENABLE_SOCKET_OR_DBUS='-DENABLE_DBUS=1'
+ 
+@@ -117,8 +119,10 @@ AC_ARG_ENABLE([native-unwinder],
+ 
+ 
+ AC_SUBST(CONF_DIR)
++AC_SUBST(DEFAULT_CONF_DIR)
+ AC_SUBST(VAR_RUN)
+ AC_SUBST(PLUGINS_CONF_DIR)
++AC_SUBST(DEFAULT_PLUGINS_CONF_DIR)
+ AC_SUBST(EVENTS_CONF_DIR)
+ AC_SUBST(EVENTS_DIR)
+ 
+diff --git a/doc/Makefile.am b/doc/Makefile.am
+index a164234..3f1498d 100644
+--- a/doc/Makefile.am
++++ b/doc/Makefile.am
+@@ -9,6 +9,7 @@ MAN1_TXT += abrt-action-analyze-backtrace.txt
+ MAN1_TXT += abrt-action-analyze-oops.txt
+ MAN1_TXT += abrt-action-analyze-python.txt
+ MAN1_TXT += abrt-action-list-dsos.txt
++MAN1_TXT += abrt-auto-reporting.txt
+ MAN1_TXT += abrt-handle-upload.txt
+ MAN1_TXT += abrt-harvest-vmcore.txt
+ MAN1_TXT += abrt-server.txt
+diff --git a/doc/abrt-auto-reporting.txt b/doc/abrt-auto-reporting.txt
+new file mode 100644
+index 0000000..1cc534e
+--- /dev/null
++++ b/doc/abrt-auto-reporting.txt
+@@ -0,0 +1,71 @@
++abrt-auto-reporting(1)
++======================
++
++NAME
++----
++abrt-auto-reporting - Get or modify a value of the auto reporting option
++
++SYNOPSIS
++--------
++'abrt-auto-reporting' [-v] [ enabled | yes | 1 | disabled | no | 0 ]
++
++DESCRIPTION
++-----------
++Reads the configuration from abrt.conf and saves the changes to the same file.
++
++The changes will take effect immediately without necessity to restart any ABRT
++process and will be persistent.
++
++'disabled'::
++   User have to report the detect problems manually
++
++'enabled'::
++   ABRT uploads an uReport which was generated for a detected problem
++   immediately after the detection phase.
++
++uReport description
++~~~~~~~~~~~~~~~~~~~
++ABRT supports uReports for four types of crashes: crashes of C/C++ programs
++that result in a core dump, uncaught Python exceptions, uncaught Java
++exceptions and kernel oopses.
++
++Each uReport generally contains a stack trace, or multiple stack traces in the
++case of multi-threaded C/C++ and Java programs. The stack trace only describes
++the call stack of the program at the time of the crash and does not contain
++contents of any variables.
++
++Every uReport also contains identification of the operating system, versions of
++the RPM packages involved in the crash, and whether the program ran under a
++root user.
++
++There are also items specific to each crash type:
++
++C/C++ crashes::
++    these are path to the executable and signal delivered to the program,
++
++Python exceptions::
++    there is the type of the exception (without the error message, which may
++    contain sensitive data),
++
++for kernel oopses::
++    these are list of loaded kernel modules, list of taint flags, and full text
++    of the kernel oops.
++
++'Warning':
++The full text of a kernel oops might contain information like the
++identification of the host hardware type. You should disable the autoreporting
++feature if you do not want to share this information with Red Hat.
++
++
++OPTIONS
++-------
++-v, --verbose::
++   Be more verbose. Can be given multiple times.
++
++SEE ALSO
++--------
++abrt.conf(5)
++
++AUTHORS
++-------
++* ABRT team
+diff --git a/src/daemon/Makefile.am b/src/daemon/Makefile.am
+index 3cfd61e..c753673 100644
+--- a/src/daemon/Makefile.am
++++ b/src/daemon/Makefile.am
+@@ -108,6 +108,9 @@ dist_daemonconf_DATA = \
+     abrt-action-save-package-data.conf \
+     gpg_keys
+ 
++defaultdaemonconfdir = $(DEFAULT_CONF_DIR)
++dist_defaultdaemonconf_DATA = $(dist_daemonconf_DATA)
++
+ comredhatabrtservicedir = ${datadir}/dbus-1/system-services
+ dist_comredhatabrtservice_DATA = com.redhat.abrt.service
+ EXTRA_DIST = abrt-handle-upload
+diff --git a/src/daemon/abrt-action-save-package-data.c b/src/daemon/abrt-action-save-package-data.c
+index a90c5e1..21234a2 100644
+--- a/src/daemon/abrt-action-save-package-data.c
++++ b/src/daemon/abrt-action-save-package-data.c
+@@ -20,6 +20,8 @@
+ #include "libabrt.h"
+ #include "rpm.h"
+ 
++#define GPG_CONF "gpg_keys.conf"
++
+ static bool   settings_bOpenGPGCheck = false;
+ static GList *settings_setOpenGPGPublicKeys = NULL;
+ static GList *settings_setBlackListedPkgs = NULL;
+@@ -121,8 +123,17 @@ static void load_gpg_keys(void)
+ static int load_conf(const char *conf_filename)
+ {
+     map_string_t *settings = new_map_string();
+-    if (!load_conf_file(conf_filename, settings, /*skip key w/o values:*/ false))
+-        error_msg("Can't open '%s'", conf_filename);
++    if (conf_filename != NULL)
++    {
++        if (!load_conf_file(conf_filename, settings, false))
++            error_msg("Can't open '%s'", conf_filename);
++    }
++    else
++    {
++        conf_filename = "abrt-action-save-package-data.conf";
++        if (!load_abrt_conf_file(conf_filename, settings))
++            error_msg("Can't load '%s'", conf_filename);
++    }
+ 
+     ParseCommon(settings, conf_filename);
+     free_map_string(settings);
+@@ -394,7 +405,7 @@ int main(int argc, char **argv)
+     abrt_init(argv);
+ 
+     const char *dump_dir_name = ".";
+-    const char *conf_filename = CONF_DIR"/abrt-action-save-package-data.conf";
++    const char *conf_filename = NULL;
+ 
+     /* Can't keep these strings/structs static: _() doesn't support that */
+     const char *program_usage_string = _(
+diff --git a/src/hooks/Makefile.am b/src/hooks/Makefile.am
+index 399f6e1..6d210d2 100644
+--- a/src/hooks/Makefile.am
++++ b/src/hooks/Makefile.am
+@@ -11,6 +11,9 @@ dist_pluginsconf_DATA = \
+     python.conf \
+     oops.conf
+ 
++defaultpluginsconfdir = $(DEFAULT_PLUGINS_CONF_DIR)
++dist_defaultpluginsconf_DATA = $(dist_pluginsconf_DATA)
++
+ sbin_SCRIPTS = \
+     abrt-install-ccpp-hook \
+     abrt-harvest-vmcore
+diff --git a/src/hooks/abrt-hook-ccpp.c b/src/hooks/abrt-hook-ccpp.c
+index d0bb28d..5f28f5c 100644
+--- a/src/hooks/abrt-hook-ccpp.c
++++ b/src/hooks/abrt-hook-ccpp.c
+@@ -501,7 +501,7 @@ int main(int argc, char** argv)
+     bool setting_SaveBinaryImage;
+     {
+         map_string_t *settings = new_map_string();
+-        load_conf_file(PLUGINS_CONF_DIR"/CCpp.conf", settings, /*skip key w/o values:*/ false);
++        load_abrt_plugin_conf_file("CCpp.conf", settings);
+         const char *value;
+         value = get_map_string_item_or_NULL(settings, "MakeCompatCore");
+         setting_MakeCompatCore = value && string_to_bool(value);
+diff --git a/src/hooks/abrt_exception_handler.py.in b/src/hooks/abrt_exception_handler.py.in
+index cc00fc7..9b56da5 100644
+--- a/src/hooks/abrt_exception_handler.py.in
++++ b/src/hooks/abrt_exception_handler.py.in
+@@ -79,23 +79,11 @@ def write_dump(tb):
+ 
+ def conf_enabled(var_name):
+     try:
+-        file = open(@CONF_DIR@ + "/plugins/python.conf", "r")
++        conf = problem.load_plugin_conf_file("python.conf")
+     except:
+         return -1
+-    for line in file:
+-        w = line.split("=", 1)  # split on '=' to 2 parts max
+-        if len(w) < 2:
+-            continue
+-        var = w[0].strip()  # remove whitespace
+-        if var != var_name:
+-            continue
+-        val = w[1].strip()  # remove whitespace
+-        if val == "yes":
+-            return 1
+-        if val == "no":
+-            return 0
+-    file.close()
+-    return -1
++    else:
++        conf.get(var_name, -1)
+ 
+ def handleMyException((etype, value, tb)):
+     """
+diff --git a/src/include/libabrt.h b/src/include/libabrt.h
+index 4dbfc38..3902051 100644
+--- a/src/include/libabrt.h
++++ b/src/include/libabrt.h
+@@ -65,6 +65,12 @@ int load_abrt_conf();
+ #define free_abrt_conf_data abrt_free_abrt_conf_data
+ void free_abrt_conf_data();
+ 
++#define load_abrt_conf_file abrt_load_abrt_conf_file
++int load_abrt_conf_file(const char *file, map_string_t *settings);
++
++#define load_abrt_plugin_conf_file abrt_load_abrt_plugin_conf_file
++int load_abrt_plugin_conf_file(const char *file, map_string_t *settings);
++
+ 
+ int check_recent_crash_file(const char *filename, const char *executable);
+ 
+diff --git a/src/lib/Makefile.am b/src/lib/Makefile.am
+index 978761c..aa6c73c 100644
+--- a/src/lib/Makefile.am
++++ b/src/lib/Makefile.am
+@@ -18,6 +18,9 @@ libabrt_la_CPPFLAGS = \
+     -I$(srcdir)/../lib \
+     -DVAR_RUN=\"$(VAR_RUN)\" \
+     -DCONF_DIR=\"$(CONF_DIR)\" \
++    -DDEFAULT_CONF_DIR=\"$(DEFAULT_CONF_DIR)\" \
++    -DPLUGINS_CONF_DIR=\"$(PLUGINS_CONF_DIR)\" \
++    -DDEFAULT_PLUGINS_CONF_DIR=\"$(DEFAULT_PLUGINS_CONF_DIR)\" \
+     -DEVENTS_DIR=\"$(EVENTS_DIR)\" \
+     $(GLIB_CFLAGS) \
+     $(LIBREPORT_CFLAGS) \
+diff --git a/src/lib/abrt_conf.c b/src/lib/abrt_conf.c
+index d4ceb64..cfea941 100644
+--- a/src/lib/abrt_conf.c
++++ b/src/lib/abrt_conf.c
+@@ -18,6 +18,8 @@
+ */
+ #include "libabrt.h"
+ 
++#define ABRT_CONF "abrt.conf"
++
+ char *        g_settings_sWatchCrashdumpArchiveDir = NULL;
+ unsigned int  g_settings_nMaxCrashReportsSize = 1000;
+ char *        g_settings_dump_location = NULL;
+@@ -105,11 +107,25 @@ int load_abrt_conf()
+     free_abrt_conf_data();
+ 
+     map_string_t *settings = new_map_string();
+-    if (!load_conf_file(CONF_DIR"/abrt.conf", settings, /*skip key w/o values:*/ false))
+-        perror_msg("Can't open '%s'", CONF_DIR"/abrt.conf");
++    if (!load_abrt_conf_file(ABRT_CONF, settings))
++        perror_msg("Can't load '%s'", ABRT_CONF);
+ 
+-    ParseCommon(settings, CONF_DIR"/abrt.conf");
++    ParseCommon(settings, ABRT_CONF);
+     free_map_string(settings);
+ 
+     return 0;
+ }
++
++int load_abrt_conf_file(const char *file, map_string_t *settings)
++{
++    static const char *const base_directories[] = { DEFAULT_CONF_DIR, CONF_DIR, NULL };
++
++    return load_conf_file_from_dirs(file, base_directories, settings, /*skip key w/o values:*/ false);
++}
++
++int load_abrt_plugin_conf_file(const char *file, map_string_t *settings)
++{
++    static const char *const base_directories[] = { DEFAULT_PLUGINS_CONF_DIR, PLUGINS_CONF_DIR, NULL };
++
++    return load_conf_file_from_dirs(file, base_directories, settings, /*skip key w/o values:*/ false);
++}
+diff --git a/src/plugins/abrt-action-generate-backtrace.c b/src/plugins/abrt-action-generate-backtrace.c
+index eb62e69..b6ef04f 100644
+--- a/src/plugins/abrt-action-generate-backtrace.c
++++ b/src/plugins/abrt-action-generate-backtrace.c
+@@ -18,6 +18,7 @@
+ */
+ #include "libabrt.h"
+ 
++#define CCPP_CONF "CCpp.conf"
+ 
+ static const char *dump_dir_name = ".";
+ /* 60 seconds was too limiting on slow machines */
+@@ -61,8 +62,8 @@ int main(int argc, char **argv)
+     export_abrt_envvars(0);
+ 
+     map_string_t *settings = new_map_string();
+-    if (!load_conf_file(PLUGINS_CONF_DIR"/CCpp.conf", settings, /*skip key w/o values:*/ false))
+-        error_msg("Can't open '%s'", PLUGINS_CONF_DIR"/CCpp.conf");
++    if (!load_abrt_plugin_conf_file(CCPP_CONF, settings))
++        error_msg("Can't load '%s'", CCPP_CONF);
+ 
+     const char *value = get_map_string_item_or_NULL(settings, "DebuginfoLocation");
+     char *debuginfo_location;
+diff --git a/src/plugins/abrt-action-install-debuginfo.in b/src/plugins/abrt-action-install-debuginfo.in
+index a6c39f3..189efa2 100644
+--- a/src/plugins/abrt-action-install-debuginfo.in
++++ b/src/plugins/abrt-action-install-debuginfo.in
+@@ -14,6 +14,7 @@ from subprocess import Popen, PIPE
+ from reportclient import _, verbose, log, log1, log2, set_verbosity, error_msg_and_die, error_msg
+ import time
+ from reportclient.debuginfo import DebugInfoDownload, filter_installed_debuginfos, build_ids_to_path, clean_up
++import problem
+ 
+ # everything was ok
+ RETURN_OK = 0
+@@ -136,20 +137,11 @@ if __name__ == "__main__":
+ 
+     if not cachedirs:
+         try:
+-            fp = open("@sysconfdir@/@PACKAGE_NAME@/plugins/CCpp.conf", "r")
+-            for line in fp:
+-                stripped = line.lstrip()
+-                if len(stripped) == 0:
+-                    continue
+-                if stripped[0] == "#":
+-                    continue
+-                if stripped[:len("DebuginfoLocation")] != "DebuginfoLocation":
+-                    continue
+-
+-                cachedirs =  stripped[len("DebuginfoLocation"):].strip(" =\n").split(":")
+-            fp.close()
+-        except IOError as (errno, strerror):
+-            print "I/O error({0}): {1}".format(errno, strerror)
++            conf = problem.load_plugin_conf_file("CCpp.conf")
++        except OSError as ex:
++            print str(ex)
++        else:
++            cachedirs = conf.get("DebuginfoLocation", None)
+ 
+         if not cachedirs:
+             cachedirs = ["/var/cache/abrt-di"]
+-- 
+1.8.3.1
+

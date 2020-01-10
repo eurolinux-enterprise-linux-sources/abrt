@@ -1,0 +1,259 @@
+From 9ce6c19242ff3ec3a70da6ebcb65f3ca5e6c32ed Mon Sep 17 00:00:00 2001
+From: Jakub Filak <jfilak@redhat.com>
+Date: Wed, 13 May 2015 15:16:23 +0200
+Subject: [ABRT PATCH] gui: adapt to PrivateReports
+
+We want to run abrt-gui with root privileges if PrivateReports=yes by default,
+because we think that this is the most comfortable work-flow for our users and
+we are not sure know how to inform users about the need to run abrt-gui with
+root privileges in a different way.
+
+We want to fall back to user privileges, because if a user wants to report a
+problem in RHEL-6, ABRT moves the corresponding dump directory to the user's
+home, so the directory becomes inaccessible for root in some cases.
+
+Signed-off-by: Jakub Filak <jfilak@redhat.com>
+---
+ src/applet/applet.c               | 32 ++++++++++++++---
+ src/gui-gtk/Makefile.am           | 11 +++++-
+ src/gui-gtk/abrt-gui-root.console |  3 ++
+ src/gui-gtk/abrt-gui-root.pam     |  4 +++
+ src/gui-gtk/main.c                | 75 +++++++++++++++++++++++++++++++++++++--
+ 5 files changed, 117 insertions(+), 8 deletions(-)
+ create mode 100644 src/gui-gtk/abrt-gui-root.console
+ create mode 100644 src/gui-gtk/abrt-gui-root.pam
+
+diff --git a/src/applet/applet.c b/src/applet/applet.c
+index c2132f5..54abfc2 100644
+--- a/src/applet/applet.c
++++ b/src/applet/applet.c
+@@ -437,9 +437,18 @@ static void show_problem_notification(problem_info_t *pi, const char *format, ..
+     va_end(args);
+ 
+     NotifyNotification *notification = new_warn_notification();
+-    notify_notification_add_action(notification, "REPORT", _("Report"),
++    if (!pi->foreign)
++    {
++        notify_notification_add_action(notification, "REPORT", _("Report"),
+                                     NOTIFY_ACTION_CALLBACK(action_report),
+                                     pi, NULL);
++    }
++    else
++    {
++        notify_notification_add_action(notification, "SHOW", _("Show"),
++                                    NOTIFY_ACTION_CALLBACK(action_open_gui),
++                                    NULL, NULL);
++    }
+     notify_notification_add_action(notification, "default", _("Show"),
+                                     NOTIFY_ACTION_CALLBACK(action_open_gui),
+                                     NULL, NULL);
+@@ -527,9 +536,23 @@ static void Crash(DBusMessage* signal)
+         }
+     }
+ 
+-    const char* message = _("A problem in the %s package has been detected");
+-    if (package_name[0] == '\0')
+-        message = _("A problem has been detected");
++    const int foreign = !dump_dir_accessible_by_uid(dir, getuid());
++    const char* message;
++
++    if (foreign)
++    {
++        if (package_name[0] == '\0')
++            message = _("Use a privileged user account to report the problem");
++        else
++            message = _("Use a privileged user account to report the problem in the %s package");
++    }
++    else
++    {
++        if (package_name[0] == '\0')
++            message = _("A problem has been detected");
++        else
++            message = _("A problem in the %s package has been detected");
++    }
+ 
+     if (!server_has_persistence())
+     {
+@@ -560,6 +583,7 @@ static void Crash(DBusMessage* signal)
+ 
+     problem_info_t *pi = problem_info_new();
+     pi->problem_dir = xstrdup(dir);
++    pi->foreign = foreign;
+     show_problem_notification(pi, message, package_name);
+ }
+ 
+diff --git a/src/gui-gtk/Makefile.am b/src/gui-gtk/Makefile.am
+index 734899e..ce30c02 100644
+--- a/src/gui-gtk/Makefile.am
++++ b/src/gui-gtk/Makefile.am
+@@ -6,6 +6,7 @@ abrt_gui_CFLAGS = \
+     -I$(srcdir)/../include \
+     -I$(srcdir)/../lib \
+     -I$(srcdir)/../gtk-helpers \
++    -DBIN_DIR=\"$(bindir)\" \
+     -DICON_DIR=\"${datadir}/abrt/icons/hicolor/48x48/status\" \
+     $(GTK_CFLAGS) \
+     $(LIBREPORT_GTK_CFLAGS) \
+@@ -40,4 +41,12 @@ desktopdir = $(datadir)/applications
+ desktop_in_files = abrt.desktop.in
+ desktop_DATA = $(desktop_in_files:.desktop.in=.desktop)
+ 
+-EXTRA_DIST = $(desktop_in_files)
++install-exec-hook:
++	ln -sf $(bindir)/consolehelper $(DESTDIR)$(bindir)/abrt-gui-root
++
++install-data-hook:
++	$(MKDIR_P) $(DESTDIR)$(sysconfdir)/pam.d $(DESTDIR)$(sysconfdir)/security/console.apps
++	$(INSTALL_DATA) abrt-gui-root.pam $(DESTDIR)$(sysconfdir)/pam.d/abrt-gui-root
++	$(INSTALL_DATA) abrt-gui-root.console $(DESTDIR)$(sysconfdir)/security/console.apps/abrt-gui-root
++
++EXTRA_DIST = $(desktop_in_files) abrt-gui-root.console abrt-gui-root.pam
+diff --git a/src/gui-gtk/abrt-gui-root.console b/src/gui-gtk/abrt-gui-root.console
+new file mode 100644
+index 0000000..178222d
+--- /dev/null
++++ b/src/gui-gtk/abrt-gui-root.console
+@@ -0,0 +1,3 @@
++USER=root
++PROGRAM=/usr/bin/abrt-gui
++SESSION=true
+diff --git a/src/gui-gtk/abrt-gui-root.pam b/src/gui-gtk/abrt-gui-root.pam
+new file mode 100644
+index 0000000..1952d97
+--- /dev/null
++++ b/src/gui-gtk/abrt-gui-root.pam
+@@ -0,0 +1,4 @@
++#%PAM-1.0
++auth            include         config-util
++account         include         config-util
++session         include         config-util
+diff --git a/src/gui-gtk/main.c b/src/gui-gtk/main.c
+index aeb566d..d2528e1 100644
+--- a/src/gui-gtk/main.c
++++ b/src/gui-gtk/main.c
+@@ -60,6 +60,11 @@ enum
+     NUM_COLUMNS
+ };
+ 
++enum
++{
++    MW_PRIVATE_REPORTS_WARNING = 1 << 0,
++};
++
+ //FIXME: maybe we can use strrchr and make this faster...
+ static char *get_last_line(const char* msg)
+ {
+@@ -697,7 +702,18 @@ static GtkWidget *create_menu(void)
+     return menu;
+ }
+ 
+-static GtkWidget *create_main_window(void)
++static GtkWidget *create_privata_reports_warning(void)
++{
++    GtkWidget *lbl = gtk_label_new(_("PrivateReports is enabled. Use a privileged user account to see the problems detected by ABRT."));
++    gtk_misc_set_padding(GTK_MISC(lbl), 12, 10);
++
++    GtkWidget *warn_box = gtk_hbox_new(false, 0);
++    gtk_box_pack_start(GTK_BOX(warn_box), lbl, true, true, 0.5);
++
++    return warn_box;
++}
++
++static GtkWidget *create_main_window(int flags)
+ {
+     /* Main window */
+     g_main_window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+@@ -709,6 +725,10 @@ static GtkWidget *create_main_window(void)
+     /* add menu */
+     gtk_box_pack_start(GTK_BOX(main_vbox), create_menu(), false, false, 0);
+ 
++    /* add private reports warning */
++    if ((flags & MW_PRIVATE_REPORTS_WARNING))
++        gtk_box_pack_start(GTK_BOX(main_vbox), create_privata_reports_warning(), false, true, 0);
++
+     GtkWidget *not_subm_vbox = gtk_vbox_new(false, 0);
+     gtk_container_set_border_width(GTK_CONTAINER(not_subm_vbox), 10);
+     GtkWidget *subm_vbox = gtk_vbox_new(false, 0);
+@@ -1005,6 +1025,12 @@ static void scan_dirs_and_add_to_dirlist(void)
+         scan_directory_and_add_to_dirlist(*argv++);
+ }
+ 
++volatile sig_atomic_t s_child_started;
++static void handle_sigusr1(int signo)
++{
++    s_child_started = 1;
++}
++
+ int main(int argc, char **argv)
+ {
+     /* I18n */
+@@ -1033,11 +1059,14 @@ int main(int argc, char **argv)
+     enum {
+         OPT_v = 1 << 0,
+         OPT_p = 1 << 1,
++        OPT_m = 1 << 1,
+     };
++    int ppid = -1;
+     /* Keep enum above and order of options below in sync! */
+     struct options program_options[] = {
+         OPT__VERBOSE(&g_verbose),
+         OPT_BOOL(   'p', NULL, NULL      , _("Add program names to log")),
++        OPT_INTEGER('m', NULL, &ppid     , _("Parent GUI pid")),
+         OPT_END()
+     };
+     unsigned opts = parse_opts(argc, argv, program_options, program_usage_string);
+@@ -1046,9 +1075,49 @@ int main(int argc, char **argv)
+ 
+     export_abrt_envvars(opts & OPT_p);
+ 
+-    GtkWidget *main_window = create_main_window();
+-
+     load_abrt_conf();
++
++    int main_window_flags = 0;
++
++    if (ppid != -1)
++        kill(ppid, SIGUSR1);
++    else if (g_settings_privatereports && getuid() != 0)
++    {
++        const char *verbs[] = { "", "-v", "-vv", "-vvv" };
++        char *new_args[8];
++        int i = 0;
++        new_args[i++] = (char *)"abrt-gui-root";
++        new_args[i++] = (char *)"-m";
++        /* leak */
++        new_args[i++] = xasprintf("%d", getpid());;
++        if ((opts & OPT_v))
++            new_args[i++] = (char *)verbs[g_verbose <= 3 ? g_verbose : 3];
++        if ((opts & OPT_p))
++            new_args[i++] = (char *)"-p";
++        new_args[i] = (char *)NULL;
++
++        signal(SIGUSR1, handle_sigusr1);
++
++        pid_t pid = fork();
++        if (pid < 0)
++            perror_msg_and_die("fork");
++        if (pid == 0)
++        {
++            execv(BIN_DIR"/abrt-gui-root", (char *const *)new_args);
++            perror_msg("Could not execute abrt-gui-root");
++            exit(-1);
++        }
++
++        int status = 0;
++        safe_waitpid(pid, &status, 0);
++        if (s_child_started)
++            exit(WEXITSTATUS(status));
++
++        main_window_flags = MW_PRIVATE_REPORTS_WARNING;
++    }
++
++    GtkWidget *main_window = create_main_window(main_window_flags);
++
+     const char *default_dirs[] = {
+         g_settings_dump_location,
+         NULL,
+-- 
+1.8.3.1
+

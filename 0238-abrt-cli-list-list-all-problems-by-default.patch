@@ -1,0 +1,61 @@
+From 4324ae52f8041ea36a225a7ddd93b19185b43840 Mon Sep 17 00:00:00 2001
+From: Jakub Filak <jfilak@redhat.com>
+Date: Mon, 12 May 2014 17:45:24 +0200
+Subject: [ABRT PATCH] abrt-cli list: list all problems by default
+
+The list of not-reported problems can be show by passing "-n" as an
+command line argument.
+
+Related to rhbz#1036585
+
+Signed-off-by: Jakub Filak <jfilak@redhat.com>
+
+Conflicts:
+
+	doc/abrt-cli.txt
+	src/cli/list.c
+---
+ po/POTFILES.in     | 1 +
+ src/cli/abrt-cli.c | 2 +-
+ src/cli/list.c     | 2 +-
+ 3 files changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/po/POTFILES.in b/po/POTFILES.in
+index dc16089..31016f1 100644
+--- a/po/POTFILES.in
++++ b/po/POTFILES.in
+@@ -36,4 +36,5 @@ src/plugins/analyze_VMcore.xml.in
+ src/plugins/collect_GConf.xml.in
+ src/plugins/collect_vimrc_system.xml.in
+ src/plugins/collect_vimrc_user.xml.in
++src/plugins/post_report.xml.in
+ 
+diff --git a/src/cli/abrt-cli.c b/src/cli/abrt-cli.c
+index ce4e396..b939df6 100644
+--- a/src/cli/abrt-cli.c
++++ b/src/cli/abrt-cli.c
+@@ -143,7 +143,7 @@ int main(int argc, const char **argv)
+         );
+ 
+     const struct cmd_struct commands[] = {
+-        CMD(list, _("List not yet reported problems [in DIRs]")),
++        CMD(list, _("List problems [in DIRs]")),
+         CMD(rm, _("Remove problem directory DIR")),
+         CMD(report, _("Analyze and report problem data in DIR")),
+         CMD(info, _("Print information about DIR")),
+diff --git a/src/cli/list.c b/src/cli/list.c
+index c93f69f..1919551 100644
+--- a/src/cli/list.c
++++ b/src/cli/list.c
+@@ -50,7 +50,7 @@ static void print_crash(problem_data_t *problem_data, int detailed)
+         desc = make_description(problem_data,
+                             /*names_to_skip:*/ NULL,
+                             /*max_text_size:*/ CD_TEXT_ATT_SIZE_BZ,
+-                            MAKEDESC_SHOW_ONLY_LIST);
++                            MAKEDESC_SHOW_ONLY_LIST | MAKEDESC_SHOW_URLS);
+     }
+     fprintf(stdout, "%s", desc);
+     free(desc);
+-- 
+1.8.3.1
+
